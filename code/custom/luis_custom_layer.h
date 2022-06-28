@@ -19,7 +19,7 @@
 CUSTOM_ID(attachment, view_custom_flags);
 CUSTOM_ID(attachment, view_code_peek_state);
 //CUSTOM_ID(attachment, view_tab_group_index);
-CUSTOM_ID(attachment, view_tab_group);
+//CUSTOM_ID(attachment, view_tab_group);
 CUSTOM_ID(attachment, view_prev_render_caller);
 CUSTOM_ID(attachment, view_prev_buffer_location);
 //CUSTOM_ID(attachment, view_current_tab); not good idea, you'd have to store per view, per BUFFER_TAB_GROUP_COUNT
@@ -35,13 +35,13 @@ CUSTOM_ID(colors, luiscolor_logical_not);
 
 global b32 IN_MODAL_MODE;
 global b32 SHOW_BRACE_LINE_ANNOTATIONS;
-global b32 HIGHLIGHT_PRINTF_SPECIFIER;
-global b32 MAKE_NEW_BUFFER_TAB_GROUP_ON_VIEW_CREATION;
+global b32 HIGHLIGHT_PRINTF_SPECIFIER = true;
+//global b32 MAKE_NEW_BUFFER_TAB_GROUP_ON_VIEW_CREATION;
 global Face_ID SMALL_CODE_FACE;
 global Face_ID ITALICS_CODE_FACE;
 global Face_ID BOLD_CODE_FACE;
 global i64 PREV_PASTE_INIT_CURSOR_POS = -1;
-global i32 CURSOR_PEEK_CODE_INDEX_RELATIVE_LINE_OFFSET = -1;
+//global i32 CURSOR_PEEK_CODE_INDEX_RELATIVE_LINE_OFFSET = -1;
 
 enum Custom_View_Flags 
 {
@@ -62,6 +62,7 @@ struct View_Buffer_Location
 
 //NOTE(luis) you can build panel layouts into this and just store a global current_workspace
 //but I tend to just prefer to have one panel open, so I wouldn't get much out of it
+/*
 struct Buffer_Tab_Group
 {
    Buffer_ID tabs[8];
@@ -73,6 +74,7 @@ global i32 BUFFER_TAB_GROUP_COMPILATION = -1; //tab group for the view with *com
 global i32 BUFFER_TAB_GROUP_COMPILATION_SCRATCH = -1; //scratch group we make when iterating through compile errors
 global i32 BUFFER_TAB_GROUP_COUNT;
 global Buffer_Tab_Group BUFFER_TAB_GROUPS[12]; //NOTE must always be greater than 2
+*/
 
 function b32
 luis_view_has_flags(Application_Links *app, View_ID view, u32 flags)
@@ -101,6 +103,7 @@ luis_view_clear_flags(Application_Links *app, View_ID view, u32 flags)
       *view_flags &= ~flags;
 }
 
+#if 0
 internal i32
 find_tab_with_buffer_id(Buffer_Tab_Group *group, Buffer_ID id)
 {
@@ -114,6 +117,7 @@ find_tab_with_buffer_id(Buffer_Tab_Group *group, Buffer_ID id)
         
     return index;
 }
+#endif
 
 
 internal View_ID
@@ -166,7 +170,7 @@ luis_get_or_split_peek_window(Application_Links *app, View_ID view, View_Split_P
    View_ID peek = luis_get_peek_window(app, view);
    if(!peek)
    {
-      MAKE_NEW_BUFFER_TAB_GROUP_ON_VIEW_CREATION = true;
+      //MAKE_NEW_BUFFER_TAB_GROUP_ON_VIEW_CREATION = true;
       peek = open_view(app, view, split_kind);
       if(peek)
       {
@@ -175,7 +179,7 @@ luis_get_or_split_peek_window(Application_Links *app, View_ID view, View_Split_P
          //view_set_split_pixel_size(app, peek, (i32)((view_rect.y1 - view_rect.y0)*0.4f));
          view_set_split(app, peek, ViewSplitKind_Ratio, 1.0f / 3);
       }
-      else MAKE_NEW_BUFFER_TAB_GROUP_ON_VIEW_CREATION = false; //open view failed, remove this "argument"
+      //else MAKE_NEW_BUFFER_TAB_GROUP_ON_VIEW_CREATION = false; //open view failed, remove this "argument"
    }
    return peek;
 }
@@ -660,7 +664,7 @@ kill_tab_group(Application_Links *app, i32 tab_group_index)
       } //while(v != view);
    }
 }
-#endif
+
 
 internal Buffer_Tab_Group *
 view_get_tab_group(Application_Links *app, View_ID view)
@@ -669,6 +673,7 @@ view_get_tab_group(Application_Links *app, View_ID view)
    Buffer_Tab_Group *group = scope_attachment(app, scope, view_tab_group, Buffer_Tab_Group);
    return group;
 }
+#endif
 
 internal Render_Caller_Function **
 view_get_prev_render_caller(Application_Links *app, View_ID view)

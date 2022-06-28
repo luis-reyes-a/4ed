@@ -1,0 +1,211 @@
+
+keys_global = {
+	{ "luis_escape",                "Escape"},
+	{ "change_active_panel",              "Semicolon", "Control" },
+	//{ "luis_switch_view_buffer_location", "Quote", "Control" },
+	{ "basic_change_active_panel",     "Semicolon", "Alt" },
+    //{ "luis_tab_prev",                 "Left",  "Alt" },
+    //{ "luis_tab_next",                 "Right", "Alt" },
+
+    { "luis_interactive_open_or_new",    "O", "Control" },
+    //{ "luis_new_tab",               "T", "Control" },
+    //{ "luis_close_tab_or_panel",    "W", "Control" },
+
+    { "interactive_switch_buffer",     "B", "Control" },
+	{ "quick_swap_buffer",             "B", "Alt" },
+	{ "save",                          "S", "Control" },
+    { "save_all_dirty_buffers",        "S", "Control", "Shift" },
+
+    { "goto_prev_jump",                "PageUp",   "Control" },
+    { "goto_next_jump",                "PageDown", "Control" },
+ 
+    { "luis_toggle_modal_mode",        "D", "Control" },
+    { "command_lister",                "X", "Alt" },
+    { "project_command_lister",        "X", "Alt", "Shift" },
+
+	{ "move_up",                "Up" },
+    { "move_down",              "Down" },
+    { "move_left",              "Left" },
+    { "move_right",             "Right" },
+
+	{ "luis_end",       "End" },
+    { "luis_home",      "Home" },
+    { "page_up",        "PageUp" },
+    { "page_down",      "PageDown" },
+
+	 
+	{ "luis_code_index_prev",    "Up",   "Alt" },
+    { "luis_code_index_next",    "Down", "Alt" },
+	{ "move_up_to_blank_line_end",            "Up",   "Control" },
+    { "move_down_to_blank_line_end",          "Down", "Control" },
+	 
+	{ "word_complete",           "J", "Control" },
+    
+	{ "exit_4coder",          "F4", "Alt" },
+    //{ "luis_list_exact_matches_of_identifier",             "F1" },
+    //{ "list_all_locations_of_identifier_case_insensitive", "F1", "Control"},
+    //{ "list_all_locations_of_selection",                   "F2" },
+	//{ "list_all_locations_of_selection_case_insensitive",  "F2", "Control"},
+	//{ "list_all_substring_locations",                      "F3" },
+	//{ "list_all_substring_locations_case_insensitive",     "F3", "Control"},
+
+    //{ "toggle_footer_panel",     "F4" },
+    //{ "open_footer_panel_big",   "F4", "Control"},
+
+    { "luis_build", "F5" },
+
+    //{ "show_all_functions", "F6" },
+    //{ "show_all_types",     "F7" },
+    //{ "show_all",           "F8" },
+    { "project_fkey_command", "F9" },
+    { "project_fkey_command", "F10" },
+    { "project_fkey_command", "F11" },
+	//{ "luis_toggle_printf_specifier_highlight", "F11" },
+    //{ "luis_toggle_brace_annotations",          "F12" },
+    { "project_fkey_command", "F13" },
+    { "project_fkey_command", "F14" },
+    { "project_fkey_command", "F15" },
+    { "project_fkey_command", "F16" },
+
+	{ "luis_write_pointer_arrow",     "Period", "Control" },
+    { "luis_write_underscore",        "Comma",  "Control" },
+	{ "luis_fsearch",                      "F", "Control" },
+	{ "luis_rsearch",              "R", "Control" },
+};
+
+keys_file = { 
+    //{ "move_up_to_blank_line_end",        "Up",    "Control" },
+    //{ "move_down_to_blank_line_end",      "Down",  "Control" },
+    //{ "move_left_alpha_numeric_boundary", "Left",  "Control" },
+    //{ "move_right_alpha_numeric_boundary","Right", "Control" },
+    { "luis_left_word",  "Left",  "Control" },
+    { "luis_right_word", "Right", "Control" },
+    { "move_left_whitespace_boundary",    "Left",  "Shift" },
+    { "move_right_whitespace_boundary",   "Right", "Shift" },
+
+
+    { "delete_char",            "Delete" },
+    { "backspace_char",         "Backspace" },
+    { "backspace_alpha_numeric_boundary", "Backspace", "Control" },
+    { "delete_alpha_numeric_boundary",    "Delete",    "Control" },
+    { "snipe_backward_whitespace_or_token_boundary", "Backspace", "Alt" },
+    { "delete_line",                                 "Delete",    "Alt" },
+    //{ "hungry_backspace",         "Insert" },
+	 
+    { "luis_set_mark",               "Space", "Control" },
+    { "cursor_mark_swap",            "Space", "Shift" },
+	 
+	{ "cut",                         "X", "Control" },
+    { "copy",                        "C", "Control" },
+	{ "paste",                       "V", "Control" },
+    { "paste_and_indent",            "V", "Alt" },
+	{ "redo",                        "U", "Alt" },
+    { "undo",                        "U", "Control" },
+    
+    { "luis_center_view_top",               "L", "Control" },
+    { "luis_adjust_horizontal_view_toggle", "L", "Alt" },
+    
+    { "search_identifier",           "F", "Alt" },
+	{ "reverse_search_identifier",   "R", "Alt" },
+	 
+    { "query_replace",               "Q", "Control" },
+	{ "query_replace_identifier",    "Q", "Alt" },
+    { "open_matching_file_cpp",    "K", "Control" },
+    //{ "luis_toggle_matching_cpp_new_tab",     "K", "Alt" },
+
+    //{ "luis_show_buffer_code_notes",      "N", "Control" },
+    //{ "luis_code_index_all_buffers",        "N", "Control" },
+	
+    { "luis_return",  "Return"},
+	{ "if_read_only_goto_position",             "Return", "Control" },
+
+    
+    //{ "word_complete_drop_down", "J", "Alt" },
+	 //{ "show_type_members", "J", "Alt" },
+    { "luis_scope_braces",      "I",      "Control" },
+    
+    { "luis_indent_range",       "Tab" },
+    { "luis_write_tab",          "Tab", "Control" },
+    //{ "luis_tab_next",           "Tab", "Control" },
+    //{ "luis_tab_prev",           "Tab", "Control", "Shift" },
+    
+	 { "goto_line",               "G", "Control" },
+
+	 { "comment_line_toggle",     "ForwardSlash", "Control"},
+};
+
+//keys_code = {
+	//{ "member_access_period",             "Period"},
+	//{ "member_access_pointer_arrow",      "Period", "Control" },
+//};
+
+keys_modal = {
+	{ "luis_escape",              "Escape"},
+    { "luis_toggle_modal_mode",      "D", "Control" },
+	{ "change_active_panel", "Semicolon", "Control"},
+    //{ "luis_close_tab_or_panel",     "W", "Control" },
+	{ "delete_range",           "Backspace"},
+    { "backspace_char",         "Backspace", "Control" },
+	 
+	{ "move_up",    "E" },
+    { "move_down",  "D" },
+	{ "luis_left_word",  "S" },
+    { "luis_right_word", "F" },
+	//{ "move_left",  "S", "Control" },
+    //{ "move_right", "F", "Control" },
+	{ "move_left",  "Left"},
+    { "move_right", "Right"},
+	{ "move_left",  "Q"},
+    { "move_right", "T"},
+	{ "move_left_alpha_numeric_boundary",  "W" },
+    { "move_right_alpha_numeric_boundary", "R" },
+	 
+	{ "luis_home", "A" },
+    { "luis_end",  "G" },
+    { "page_up",                "PageUp" },
+    { "page_down",              "PageDown" },
+	 
+    { "luis_set_mark",               "Space"},
+    { "cursor_mark_swap",            "Space", "Control" },
+    { "write_space",                 "Space", "Shift" },
+
+    { "luis_indent_range",         "Tab" },
+    { "luis_write_tab",                 "Tab", "Control" },
+    { "luis_return",  "Return"},
+    { "if_read_only_goto_position",             "Return", "Control" },
+
+    { "cut",                         "X"},
+    { "copy",                        "C"},
+    { "paste",                       "V"},
+    { "paste_and_indent",            "V", "Control"},
+    { "redo",                        "U", "Control"},
+    { "undo",                        "U"},
+
+    //{ "select_token_or_word", "J"},
+    { "luis_select_line",          "K"},
+    { "place_in_scope",       "I"},
+	 //{ "surround_in_parens",   "P"},
+
+
+    { "luis_center_view_top",                 "L"},
+	//{ "left_adjust_view",            "L", "Control" },
+
+    
+	 //{ "move_prev_paren",                  "9" },
+	 //{ "move_next_paren",                  "0" },
+    //{ "select_surrounding_paren",         "9", "Control" },
+	//{ "move_prev_brace",                  "LeftBracket" },
+	//{ "move_next_brace",                  "RightBracket" },
+    { "luis_select_surrounding_scope",         "Quote" },
+    { "luis_select_surrounding_scope_maximal", "Quote", "Control" },
+
+    { "luis_multiline_comment_toggle",        "ForwardSlash"},
+	 
+
+
+    { "luis_fsearch",                      "F", "Control" },
+	{ "luis_rsearch",              "R", "Control" },
+    { "search_identifier",           "F", "Alt" },
+	{ "reverse_search_identifier",   "R", "Alt" },
+};
+
