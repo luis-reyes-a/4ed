@@ -342,6 +342,24 @@ luis_find_build_view(Application_Links *app)
     return build_view;
 }
 
+CUSTOM_COMMAND_SIG(luis_close_panel)
+CUSTOM_DOC("Close panel. Peek first.") {
+    
+    View_ID active_view = get_active_view(app, Access_Always);
+    if (View_ID peek = luis_get_peek_window(app, active_view)) {
+        view_close(app, active_view);
+    }
+    else  {
+        for(View_ID v = get_view_next(app, 0, Access_Always); v; v = get_view_next(app, v, Access_Always)) {
+            if (luis_view_has_flags(app, v, VIEW_IS_PEEK_WINDOW)) {
+                view_close(app, v); 
+                return;
+            }
+        }
+        view_close(app, active_view);
+    }
+}
+
 CUSTOM_COMMAND_SIG(luis_return)
 CUSTOM_DOC("If the buffer in the active view is writable, inserts a character, otherwise performs goto_jump_at_cursor.")
 {

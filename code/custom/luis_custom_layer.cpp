@@ -11,6 +11,11 @@
 
 // NOTE(allen): Users can declare their own managed IDs here.
 #include "luis_custom_layer.h"
+//#include "4coder_vim.h" //TODO remove this
+//#include "4coder_vim.cpp" //TODO remove this
+//#include "4coder_vim_helper.cpp" //TODO remove this
+#include "4coder_vim_lister.cpp"
+#include "4coder_vim_lists.cpp"
 #include "luis_commands.cpp"
 #include "luis_hooks.cpp"
 
@@ -30,9 +35,11 @@ custom_layer_init(Application_Links *app){
     // NOTE(allen): default hooks and command maps
     set_all_default_hooks(app);
     //custom hooks
+    set_custom_hook(app, HookID_Tick,                     luis_tick);
     set_custom_hook(app, HookID_ViewEventHandler, luis_view_input_handler);
     set_custom_hook(app, HookID_RenderCaller, luis_render_caller);
     set_custom_hook(app, HookID_WholeScreenRenderCaller, luis_whole_screen_render_caller);
+    
     
     mapping_init(tctx, &framework_mapping);
     String_ID global_map_id = vars_save_string_lit("keys_global");

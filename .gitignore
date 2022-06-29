@@ -5,3 +5,15 @@
 *.obj
 *.ilk
 *.dll
+*.exe
+*.pdb
+*.dll
+*.ilk
+build/4ed.exe
+build/4ed.pdb
+build/4ed_app.dll
+build/4ed_app.pdb
+build/4ed_app_target.obj
+build/build.ilk
+build/custom_4coder.dll
+build/custom_4coder.pdb

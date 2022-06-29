@@ -157,6 +157,42 @@ CUSTOM_DOC("Input consumption loop for default view behavior")
     }
 }
 
+
+function void
+vim_animate_filebar(Application_Links *app, Frame_Info frame_info){
+#if 1
+	f32 diff = vim_nxt_filebar_offset - vim_cur_filebar_offset;
+	if(fabs(diff) > 1.0f){
+		vim_cur_filebar_offset += diff*frame_info.animation_dt*25.0f;
+		animate_in_n_milliseconds(app, 0);
+	}else{
+		vim_cur_filebar_offset = vim_nxt_filebar_offset;
+	}
+#else
+	vim_cur_filebar_offset = vim_nxt_filebar_offset;
+#endif
+}
+
+function void
+luis_tick(Application_Links *app, Frame_Info frame_info){
+	code_index_update_tick(app);
+	if(tick_all_fade_ranges(app, frame_info.animation_dt)){
+		animate_in_n_milliseconds(app, 0);
+	}
+
+    
+	vim_animate_filebar(app, frame_info);
+	//vim_animate_cursor(app, frame_info);
+	//vim_cursor_blink++;
+	//fold_tick(app, frame_info);
+
+	b32 enable_virtual_whitespace = def_get_config_b32(vars_save_string_lit("enable_virtual_whitespace"));
+	if(enable_virtual_whitespace != def_enable_virtual_whitespace){
+		def_enable_virtual_whitespace = enable_virtual_whitespace;
+		clear_all_layouts(app);
+	}
+}
+
 internal b32
 maybe_draw_string_with_printf_specifier_highlight(Application_Links *app, Text_Layout_ID text_layout_id, Buffer_ID buffer_id, Token *token) {
     b32 drew_special_comment_token = false;
