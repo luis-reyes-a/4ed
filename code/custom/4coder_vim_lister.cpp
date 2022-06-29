@@ -37,11 +37,14 @@ vim_lister__backspace(Application_Links *app){
 		if(has_modifier(&input, KeyCode_Control)){
 			if(has_modifier(&input, KeyCode_Shift)){
 				lister->text_field.size = 0;
+                minibar_string.size = 0;
 			}else{
 				lister->text_field.string = ctrl_backspace_utf8(lister->text_field.string);
+                minibar_string.string = ctrl_backspace_utf8(minibar_string.string);
 			}
 		}else{
 			lister->text_field.string = backspace_utf8(lister->text_field.string);
+            minibar_string.string = backspace_utf8(minibar_string.string);
 		}
         
 		lister_set_key(lister, lister->text_field.string);
@@ -49,6 +52,30 @@ vim_lister__backspace(Application_Links *app){
 		lister_zero_scroll(lister);
 		lister_update_filtered_list(app, lister);
 	}
+}
+
+
+
+function Lister_Activation_Code
+vim_lister__write_character(Application_Links *app){
+    Lister_Activation_Code result = ListerActivation_Continue;
+    View_ID view = get_active_view(app, Access_Always);
+    Lister *lister = view_get_lister(app, view);
+    if (lister != 0){
+        User_Input in = get_current_input(app);
+        String_Const_u8 string = to_writable(&in);
+        if (string.str != 0 && string.size > 0){
+            lister_append_text_field(lister, string);
+            lister_append_key(lister, string);
+            
+            string_append(&minibar_string, string);
+            
+            lister->item_index = 0;
+            lister_zero_scroll(lister);
+            lister_update_filtered_list(app, lister);
+        }
+    }
+    return(result);
 }
 
 
@@ -91,10 +118,12 @@ vim_lister_file__backspace(Application_Links *app){
 					}
 				}else{
 					lister->text_field.string = ctrl_backspace_utf8(lister->text_field.string);
+                    minibar_string.string = ctrl_backspace_utf8(minibar_string.string);
 				}
 			}
 		}else{
 			lister->text_field.string = backspace_utf8(lister->text_field.string);
+            minibar_string.string = backspace_utf8(minibar_string.string);
 		}
         
 		String_Const_u8 text_field = lister->text_field.string;
@@ -118,6 +147,7 @@ vim_lister__write_character__file_path(Application_Links *app){
 		String_Const_u8 string = to_writable(&in);
 		if(string.str != 0 && string.size > 0){
 			lister_append_text_field(lister, string);
+            string_append(&minibar_string, string);
 			if(character_is_slash(string.str[0])){
 				lister->out.text_field = lister->text_field.string;
                 result = ListerActivation_Finished;
@@ -137,7 +167,8 @@ vim_lister__write_character__file_path(Application_Links *app){
 function void
 vim_lister_set_default_handlers(Lister *lister){
 	Lister_Handlers handlers = lister_get_default_handlers();
-	handlers.backspace = vim_lister__backspace;
+	handlers.backspace       = vim_lister__backspace;
+    handlers.write_character = vim_lister__write_character;
 	lister_set_handlers(lister, &handlers);
 }
 

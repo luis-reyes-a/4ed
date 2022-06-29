@@ -933,7 +933,7 @@ luis_whole_screen_render_caller(Application_Links *app, Frame_Info frame_info) {
         //Code_Index_File *code_index_file = code_index_get_file(buffer);
         
         if (minibar_string.size > 0) {
-            push_fancy_stringf(scratch, &list, base_color, "%.*s", string_expand(minibar_string)); //makes it in reverse order ezSadge
+            push_fancy_stringf(scratch, &list, base_color, "%.*s  ", string_expand(minibar_string)); //makes it in reverse order ezSadge
         }
         else {
             String_Const_u8 string = get_entire_scope_parents_at_pos(app, scratch, buffer, cursor_pos);
@@ -949,7 +949,7 @@ luis_whole_screen_render_caller(Application_Links *app, Frame_Info frame_info) {
         
         String_Const_u8 unique_name = push_buffer_unique_name(app, scratch, buffer);
         push_fancy_string(scratch, &list, base_color, unique_name);
-        push_fancy_stringf(scratch, &list, base_color, " - Row: %3.lld Col: %3.lld -", cursor.line, cursor.col);
+        push_fancy_stringf(scratch, &list, base_color, " (%lld,%lld)", cursor.col, cursor.line);
         
         //extra stuff
         {

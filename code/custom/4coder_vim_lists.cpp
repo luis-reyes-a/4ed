@@ -48,8 +48,8 @@ vim_get_command_from_user(Application_Links *app, i32 *command_ids, i32 command_
 }
 
 CUSTOM_UI_COMMAND_SIG(vim_command_mode)
-CUSTOM_DOC("Enter Command Mode")
-{
+CUSTOM_DOC("Enter Command Mode") {
+    defer { minibar_string.size = 0; };
 	View_ID view = get_this_ctx_view(app, Access_Always);
 	if(view == 0){ return; }
 	Command_Lister_Status_Rule rule = {};
@@ -200,6 +200,7 @@ get_directory_for_buffer(Application_Links *app, Arena *arena, Buffer_ID buffer_
 CUSTOM_UI_COMMAND_SIG(vim_interactive_open_or_new)
 CUSTOM_DOC("Interactively open a file out of the file system.")
 {
+    defer { minibar_string.size = 0; };
     #if 1 //NOTE(luis) added this so that we always open file in the file's directory
     {
         View_ID view = get_active_view(app, Access_Always);
@@ -223,11 +224,6 @@ CUSTOM_DOC("Interactively open a file out of the file system.")
         }
     }
     #endif
-    
-    defer {
-        minibar_string.size = 0;    
-    };
-    
     
 	for(;;) {
 		Scratch_Block scratch(app);
@@ -280,6 +276,7 @@ CUSTOM_DOC("Interactively open a file out of the file system.")
 CUSTOM_UI_COMMAND_SIG(vim_theme_lister)
 CUSTOM_DOC("Opens an interactive list of all registered themes.")
 {
+    defer { minibar_string.size = 0; };
 	Color_Table_List *color_table_list = &global_theme_list;
 
 	Scratch_Block scratch(app);
@@ -309,6 +306,7 @@ CUSTOM_DOC("Opens an interactive list of all registered themes.")
 CUSTOM_UI_COMMAND_SIG(vim_switch_lister)
 CUSTOM_DOC("Opens an interactive list of all loaded buffers.")
 {
+    defer { minibar_string.size = 0; };
 	Lister_Handlers handlers = lister_get_default_handlers();
 	handlers.refresh = generate_all_buffers_list;
 	handlers.backspace = vim_lister__backspace;
@@ -369,6 +367,7 @@ vim_get_jump_index_from_user(Application_Links *app, Marker_List *list, char *qu
 CUSTOM_UI_COMMAND_SIG(vim_list_all_functions_current_buffer_lister)
 CUSTOM_DOC("Creates a lister of locations that look like function definitions and declarations in the buffer.")
 {
+    defer { minibar_string.size = 0; };
 	Heap *heap = &global_heap;
 	View_ID view = get_active_view(app, Access_ReadVisible);
 	Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
@@ -387,6 +386,7 @@ CUSTOM_DOC("Creates a lister of locations that look like function definitions an
 CUSTOM_UI_COMMAND_SIG(vim_proj_cmd_lister)
 CUSTOM_DOC("Opens an interactive list of all project commands.")
 {
+    defer { minibar_string.size = 0; };
 	Variable_Handle prj_var = vars_read_key(vars_get_root(), vars_save_string_lit("prj_config"));
 
 	Scratch_Block scratch(app);

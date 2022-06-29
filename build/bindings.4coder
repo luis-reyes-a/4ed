@@ -11,7 +11,7 @@ keys_global = {
     //{ "luis_new_tab",               "T", "Control" },
     { "luis_close_panel",    "W", "Control" },
 
-    { "vim_switch_lister"     "B", "Control" },
+    { "vim_switch_lister",             "B", "Control" },
 	{ "quick_swap_buffer",             "B", "Alt" },
 	{ "save",                          "S", "Control" },
     { "save_all_dirty_buffers",        "S", "Control", "Shift" },

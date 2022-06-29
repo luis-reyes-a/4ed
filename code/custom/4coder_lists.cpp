@@ -610,8 +610,8 @@ activate_open_or_new__generic(Application_Links *app, View_ID view,
 }
 
 CUSTOM_UI_COMMAND_SIG(interactive_open_or_new)
-CUSTOM_DOC("Interactively open a file out of the file system.")
-{
+CUSTOM_DOC("Interactively open a file out of the file system.") {
+    
     for (;;){
         Scratch_Block scratch(app);
         View_ID view = get_this_ctx_view(app, Access_Always);

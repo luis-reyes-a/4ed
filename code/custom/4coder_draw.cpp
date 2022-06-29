@@ -324,7 +324,8 @@ draw_file_bar(Application_Links *app, View_ID view_id, Buffer_ID buffer, Face_ID
     Fancy_Line list = {};
     String_Const_u8 unique_name = push_buffer_unique_name(app, scratch, buffer);
     push_fancy_string(scratch, &list, base_color, unique_name);
-    push_fancy_stringf(scratch, &list, base_color, " - Row: %3.lld Col: %3.lld -", cursor.line, cursor.col);
+    //push_fancy_stringf(scratch, &list, base_color, " - Row: %3.lld Col: %3.lld -", cursor.line, cursor.col);
+    push_fancy_stringf(scratch, &list, base_color, " (%lld,%lld)", cursor.col, cursor.line);
     
     Managed_Scope scope = buffer_get_managed_scope(app, buffer);
     Line_Ending_Kind *eol_setting = scope_attachment(app, scope, buffer_eol_setting,
