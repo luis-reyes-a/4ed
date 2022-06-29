@@ -43,6 +43,9 @@ global Face_ID BOLD_CODE_FACE;
 global i64 PREV_PASTE_INIT_CURSOR_POS = -1;
 //global i32 CURSOR_PEEK_CODE_INDEX_RELATIVE_LINE_OFFSET = -1;
 
+global u8 minibar_string_buffer[512];
+global String_u8 minibar_string;
+
 enum Custom_View_Flags 
 {
    VIEW_IS_PEEK_WINDOW        = (1 << 0),

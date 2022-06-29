@@ -66,6 +66,10 @@ vim_lister_file__backspace(Application_Links *app){
 				String_u8 temp = lister->text_field;
                 
 				set_hot_directory(app, temp.string);
+                
+                minibar_string.size = Min(minibar_string.cap, temp.string.size);
+                block_copy(minibar_string.str, temp.string.str, minibar_string.size);
+                
 				lister_call_refresh_handler(app, lister);
 				lister->text_field = temp;
 			}else{
@@ -76,7 +80,11 @@ vim_lister_file__backspace(Application_Links *app){
 					if(slash_index >= 0){
 						string.size = slash_index+1;
 						lister->text_field.string = string;
+                        
 						set_hot_directory(app, string);
+                        minibar_string.size = Min(minibar_string.cap, string.size);
+                        block_copy(minibar_string.str, string.str, minibar_string.size);
+                        
 						String_u8 temp = lister->text_field;
 						lister_call_refresh_handler(app, lister);
 						lister->text_field = temp;
@@ -174,7 +182,7 @@ vim_lister_user_data_at_p(Application_Links *app, View_ID view, Lister *lister, 
     #else
     Rect_f32 region = global_get_screen_rectangle(app);
     f32 lineheight = get_face_metrics(app, get_face_id(app, 0)).line_height;
-	region.y1 -= 2*lineheight;
+	region.y1 -= 1*lineheight;
 	region.y0 = region.y1 - 4*lineheight;
     #endif
     
@@ -208,7 +216,7 @@ calc_col_row(Application_Links *app, Lister *lister){
 	f32 max_advance = metrics.max_advance;
 	f32 block_height = vim_lister_get_block_height(line_height);
 	//f32 max_lister_height = dim.y*VIM_LISTER_MAX_RATIO - 2.f*line_height;
-    f32 max_lister_height = dim.y*0.35f - 2.f*line_height;
+    f32 max_lister_height = dim.y*0.35f - 1.f*line_height;
     
     
 	u64 max_name_size = 0;
@@ -268,7 +276,7 @@ vim_lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
     
  // TODO(BYP) check exactly why row_num+2. Had to update when changing block_height
 	region = rect_split_top_bottom_neg(region, (row_num+2)*block_height).max;
-	region = rect_split_top_bottom_neg(region, 2.f*line_height).min;
+	region = rect_split_top_bottom_neg(region, 1.f*line_height).min;
 	vim_nxt_filebar_offset = row_num*block_height + 0.1f;
  // non-zero so when lister displays no results, it still displays the cursor
     
@@ -415,6 +423,13 @@ vim_run_lister(Application_Links *app, Lister *lister){
 	//begin = dest = vim_bot_text.str + vim_bot_text.size;
 	//u64 base_size, after_size;
 	//base_size = after_size = vim_bot_text.size;
+    //Assert (minibar_string.cap >= minibar_string.size);
+    //u8 *minibar_string_at = minibar_string.str + minibar_string.size;
+    //u64 minibar_max_size_can_write = minibar_string.cap - minibar_string.size;
+    //u64 minibar_current_length = 0;
+    //defer {
+        //minibar_string.size += minibar_current_length; 
+    //};
     
 	User_Input in = {};
 	for(;;){
@@ -422,9 +437,15 @@ vim_run_lister(Application_Links *app, Lister *lister){
 		i32 col_num = col_row.visible_col_count;
 		i32 visible_count = col_row.visible_col_count*col_row.visible_row_count;
         
-        //draw stuff to bottom of thing filebar
-		//block_copy(dest, lister->text_field.str, lister->text_field.size);
-		//vim_bot_text.size = after_size + lister->text_field.size;
+        //bool lister_textfield_modified = false; //do thing in rare case textfield modified but the length was preserved (backspace+enter_char at exact same time... )
+        //u64 init_textfield_size = lister->text_field.size;
+        //defer {
+            //if (lister_textfield_modified || (lister->text_field.size != init_textfield_size)) {
+                //minibar_current_length = Min(minibar_max_size_can_write, lister->text_field.size);
+                //if (minibar_current_length > 0)
+                    //block_copy(minibar_string_at, lister->text_field.str, minibar_current_length);
+            //}
+        //};
         
 		animate_in_n_milliseconds(app, 0);
         
@@ -454,6 +475,7 @@ vim_run_lister(Application_Links *app, Lister *lister){
                 if (has_modifier(&in, KeyCode_Control)) {
                     block_zero_struct(&lister->out);
                     lister->out.canceled = true;
+                    //lister_textfield_modified = true;
                     //vim_reset_bottom_text();
                     break;
                 }
@@ -467,6 +489,7 @@ vim_run_lister(Application_Links *app, Lister *lister){
             //vim_cursor_blink = 0;
             if(lister->handlers.write_character != 0){
                 result = lister->handlers.write_character(app);
+                //lister_textfield_modified = true;
             }
         } break;
         
@@ -488,8 +511,10 @@ vim_run_lister(Application_Links *app, Lister *lister){
                 void *user_data = 0;
                 if(in_range(0, lister->raw_item_index, lister->options.count)){
                     user_data = lister_get_user_data(lister, lister->raw_item_index);
-                    //block_copy(dest, lister->highlighted_node->string.str, lister->highlighted_node->string.size);
-                    //vim_bot_text.size = base_size + lister->highlighted_node->string.size;
+                    
+                    //upate minibar string to fill in what the entry string was
+                    //minibar_current_length = Min(minibar_max_size_can_write, lister->highlighted_node->string.size);
+                    //block_copy(minibar_string_at, lister->highlighted_node->string.str, minibar_current_length);
                 }
                 lister_activate(app, lister, user_data, false);
                 result = ListerActivation_Finished;
@@ -498,6 +523,7 @@ vim_run_lister(Application_Links *app, Lister *lister){
             case KeyCode_Backspace:{
                 if(lister->handlers.backspace != 0){
                     lister->handlers.backspace(app);
+                    //lister_textfield_modified = true;
                 }else if(lister->handlers.key_stroke != 0){
                     result = lister->handlers.key_stroke(app);
                 }else{ handled = false; }
@@ -703,6 +729,7 @@ vim_get_file_name_from_user(Application_Links *app, Arena *arena, String_Const_u
 	handlers.write_character = vim_lister__write_character__file_path;
 	handlers.backspace = vim_lister_file__backspace;
     
+    //minibar_string.size = 0;
 	//vim_reset_bottom_text(); //TODO make string zero basically
 	Lister_Result l_result = vim_run_lister_with_refresh_handler(app, arena, query, handlers);
 	return vim_convert_lister_result_to_file_name_result(l_result);

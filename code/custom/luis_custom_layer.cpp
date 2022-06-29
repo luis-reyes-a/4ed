@@ -29,6 +29,10 @@ void
 custom_layer_init(Application_Links *app){
     Thread_Context *tctx = get_thread_context(app);
     
+    minibar_string.str = minibar_string_buffer;
+    minibar_string.cap = ArrayCount(minibar_string_buffer);
+    minibar_string.size = 0;
+    
     // NOTE(allen): setup for default framework
     default_framework_init(app);
     

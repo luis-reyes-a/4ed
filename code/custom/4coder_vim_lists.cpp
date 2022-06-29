@@ -39,10 +39,9 @@ vim_get_command_from_user(Application_Links *app, i32 *command_ids, i32 command_
 	lister_set_query(lister, string_u8_litexpr("Command:"));
 	vim__fill_command_lister(scratch, lister, command_ids, command_id_count, status_rule);
 
-#if VIM_USE_BOTTOM_LISTER
-	vim_reset_bottom_text();
-	string_append(&vim_bot_text, string_u8_litexpr(":"));
-#endif
+    //minibar_string.size = 0;
+	//vim_reset_bottom_text();
+	//string_append(&vim_bot_text, string_u8_litexpr(":"));
 	Lister_Result l_result = vim_run_lister(app, lister);
 
 	return (l_result.canceled ? 0 : (Custom_Command_Function *)l_result.user_data);
@@ -209,9 +208,26 @@ CUSTOM_DOC("Interactively open a file out of the file system.")
         
         Buffer_ID buffer_id = view_get_buffer(app, view, Access_Always);
         String_Const_u8 directory = get_directory_for_buffer(app, scratch, buffer_id);
-        if(directory.size) set_hot_directory(app, directory);    
+        if(directory.size) {
+            set_hot_directory(app, directory);
+            
+            minibar_string.size = Min(minibar_string.cap, directory.size);
+            block_copy(minibar_string.str, directory.str, minibar_string.size); 
+        }   
+        else {
+            directory = push_hot_directory(app, scratch);
+            if (directory.size) {
+                minibar_string.size = Min(minibar_string.cap, directory.size);
+                block_copy(minibar_string.str, directory.str, minibar_string.size);
+            }
+        }
     }
     #endif
+    
+    defer {
+        minibar_string.size = 0;    
+    };
+    
     
 	for(;;) {
 		Scratch_Block scratch(app);
@@ -228,6 +244,9 @@ CUSTOM_DOC("Interactively open a file out of the file system.")
 
 		if(result.is_folder){
 			set_hot_directory(app, full_file_name);
+            
+            minibar_string.size = Min(minibar_string.cap, full_file_name.size);
+            block_copy(minibar_string.str, full_file_name.str, minibar_string.size);
 			continue;
 		}
 
@@ -266,6 +285,7 @@ CUSTOM_DOC("Opens an interactive list of all registered themes.")
 	Scratch_Block scratch(app);
 	Lister_Block lister(app, scratch);
 	vim_lister_set_default_handlers(lister);
+    minibar_string.size = 0;
 	//vim_reset_bottom_text();
 
 	lister_add_item(lister, string_u8_litexpr("4coder"), string_u8_litexpr(""),
@@ -293,10 +313,9 @@ CUSTOM_DOC("Opens an interactive list of all loaded buffers.")
 	handlers.refresh = generate_all_buffers_list;
 	handlers.backspace = vim_lister__backspace;
 	Scratch_Block scratch(app);
-#if VIM_USE_BOTTOM_LISTER
-	vim_reset_bottom_text();
-	string_append(&vim_bot_text, string_u8_litexpr("Switch:"));
-#endif
+    minibar_string.size = 0;
+	//vim_reset_bottom_text();
+	//string_append(&vim_bot_text, string_u8_litexpr("Switch:"));
 	Lister_Result l_result = vim_run_lister_with_refresh_handler(app, scratch, string_u8_litexpr("Switch:"), handlers);
 	Buffer_ID buffer = 0;
 	if (!l_result.canceled){
@@ -377,6 +396,7 @@ CUSTOM_DOC("Opens an interactive list of all project commands.")
 	handlers.backspace = vim_lister__backspace;
 	lister_set_handlers(lister, &handlers);
 
+    minibar_string.size = 0;
 	//vim_reset_bottom_text();
 	//string_append(&vim_bot_text, string_u8_litexpr("Command:"));
 

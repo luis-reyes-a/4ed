@@ -7,11 +7,11 @@ keys_global = {
     //{ "luis_tab_prev",                 "Left",  "Alt" },
     //{ "luis_tab_next",                 "Right", "Alt" },
 
-    { "luis_interactive_open_or_new",    "O", "Control" },
+    { "vim_interactive_open_or_new",    "O", "Control" },
     //{ "luis_new_tab",               "T", "Control" },
     { "luis_close_panel",    "W", "Control" },
 
-    { "interactive_switch_buffer",     "B", "Control" },
+    { "vim_switch_lister"     "B", "Control" },
 	{ "quick_swap_buffer",             "B", "Alt" },
 	{ "save",                          "S", "Control" },
     { "save_all_dirty_buffers",        "S", "Control", "Shift" },
@@ -20,7 +20,7 @@ keys_global = {
     { "goto_next_jump",                "PageDown", "Control" },
  
     { "luis_toggle_modal_mode",        "D", "Control" },
-    { "command_lister",                "X", "Alt" },
+    { "vim_command_mode",                "X", "Alt" },
     { "project_command_lister",        "X", "Alt", "Shift" },
 
 	{ "move_up",                "Up" },

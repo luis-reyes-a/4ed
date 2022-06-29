@@ -931,70 +931,19 @@ luis_whole_screen_render_caller(Application_Links *app, Frame_Info frame_info) {
         
         //Token_Array tokens = get_token_array_from_buffer(app, buffer);
         //Code_Index_File *code_index_file = code_index_get_file(buffer);
-        #if 1
-        String_Const_u8 string = get_entire_scope_parents_at_pos(app, scratch, buffer, cursor_pos);
-        if (string.size > 0) {
-            push_fancy_stringf(scratch, &list, base_color, "%.*s", string_expand(string)); //makes it in reverse order ezSadge    
+        
+        if (minibar_string.size > 0) {
+            push_fancy_stringf(scratch, &list, base_color, "%.*s", string_expand(minibar_string)); //makes it in reverse order ezSadge
+        }
+        else {
+            String_Const_u8 string = get_entire_scope_parents_at_pos(app, scratch, buffer, cursor_pos);
+            if (string.size > 0) {
+                push_fancy_stringf(scratch, &list, base_color, "%.*s  ", string_expand(string)); //makes it in reverse order ezSadge    
+            }    
         }
         
-        //if (code_index_file) {
-            
-            //push_fancy_stringf(scratch, &list, base_color, "%.*s::", string_expand(note->text)); //makes it in reverse order ezSadge
-        //}
-        #else
-        if (tokens.tokens && code_index_file) {
-        //if (string_match(extension, string_u8_litexpr("cpp")) || string_match(extension, string_u8_litexpr("h"))) {
-            i64 pos = cursor_pos;
-            
-            i32  outer_note_count = 0;
-            i32  max_outer_note_count = 12;
-            Code_Index_Note **outer_notes = push_array_zero(scratch, Code_Index_Note *, max_outer_note_count);
-            
-            Range_i64 range = {};
-            while (find_surrounding_nest(app, buffer, pos, FindNest_Scope, &range)) {
+        
                 
-                Token_Iterator_Array it = token_iterator_pos(0, &tokens, range.min);
-                Token *token = token_it_read(&it);
-                if (token->kind == TokenBaseKind_ScopeOpen){
-                    token_it_dec_non_whitespace(&it);
-                    token = token_it_read(&it);
-                    
-                    if (token && token->kind == TokenBaseKind_Identifier) {
-                        
-                        String_Const_u8 identifier = push_token_lexeme(app, scratch, buffer, token);
-                        
-                        //NOTE if this is too slow we can just try to do a simple parse ourselves (look for namespace/struct/union right before the identifier)
-                        Code_Index_Note *note = 0;
-                        for (Code_Index_Note *node = code_index_file->note_list.first; node; node = node->next) {
-                            if (string_match(node->text, identifier)) {
-                                note = node;
-                                break;
-                            }
-                        }
-                        
-                        if (note) {
-                            //push_fancy_stringf(scratch, &list, base_color, "%.*s::", string_expand(note->text)); //makes it in reverse order ezSadge
-                            if (outer_note_count < max_outer_note_count) {
-                                outer_notes[outer_note_count++] = note;
-                            }
-                        }
-                        
-                    	//token_it_dec_non_whitespace(&it);
-                    	//token = token_it_read(&it);
-                    }
-                }
-                
-                
-                
-                pos = range.min;
-            }
-            
-            for (i32 i = outer_note_count-1; i >= 0; i -= 1) {
-                Code_Index_Note *note = outer_notes[i];
-                push_fancy_stringf(scratch, &list, base_color, "%.*s::", string_expand(note->text)); //makes it in reverse order ezSadge
-            }
-        }
-        #endif
         
         
         
