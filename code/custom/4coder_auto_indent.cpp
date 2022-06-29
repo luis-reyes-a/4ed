@@ -61,10 +61,12 @@ set_line_indents(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i
     }
 }
 
+
 internal Token*
 find_anchor_token(Application_Links *app, Buffer_ID buffer, Token_Array *tokens, i64 invalid_line){
     ProfileScope(app, "find anchor token");
     Token *result = 0;
+    Token *last_switch_or_namespace = 0;
     
     if (tokens != 0 && tokens->tokens != 0){
         result = tokens->tokens;
@@ -76,9 +78,21 @@ find_anchor_token(Application_Links *app, Buffer_ID buffer, Token_Array *tokens,
             if (token->pos + token->size > invalid_pos){
                 break;
             }
-            if (!HasFlag(token->flags,  TokenBaseFlag_PreprocessorBody)){
+            
+            //NOTE(luis) not sure why by doing this indents macro blocks like normal which Ilike
+            //well I mean i get why that happens. I'm just surprised that it dosen't break anything else
+            //if (!HasFlag(token->flags,  TokenBaseFlag_PreprocessorBody))
+            {
                 if (scope_counter == 0 && paren_counter == 0){
                     result = token;
+                    
+                    if (token->kind == TokenBaseKind_Keyword) {
+                        if (token->sub_kind == TokenCppKind_Switch ||
+                            token->sub_kind == TokenCppKind_Namespace) {
+                            last_switch_or_namespace = token;
+                        }
+                    }
+                    
                 }
                 switch (token->kind){
                     case TokenBaseKind_ScopeOpen:
@@ -107,7 +121,8 @@ find_anchor_token(Application_Links *app, Buffer_ID buffer, Token_Array *tokens,
         }
     }
     
-    return(result);
+    if (last_switch_or_namespace) return last_switch_or_namespace;
+    else return(result);
 }
 
 internal Nest*
@@ -132,10 +147,10 @@ indent__unfinished_statement(Token *token, Nest *current_nest){
     b32 result = false;
     if (current_nest != 0 && current_nest->kind == TokenBaseKind_ScopeOpen){
         result = true;
-        switch (token->kind){
+        switch  (token->kind)  {
             case TokenBaseKind_ScopeOpen:
-            case TokenBaseKind_ScopeClose:
-            case TokenBaseKind_StatementClose:
+        case TokenBaseKind_ScopeClose:
+        case TokenBaseKind_StatementClose:
             {
                 result = false;
             }break;
@@ -158,6 +173,8 @@ line_indent_cache_update(Application_Links *app, Buffer_ID buffer, i32 tab_width
     }
 }
 
+
+
 internal i64*
 get_indentation_array(Application_Links *app, Arena *arena, Buffer_ID buffer, Range_i64 lines, Indent_Flag flags, i32 tab_width, i32 indent_width){
     ProfileScope(app, "get indentation array");
@@ -166,10 +183,10 @@ get_indentation_array(Application_Links *app, Arena *arena, Buffer_ID buffer, Ra
     i64 *shifted_indentations = indentations - lines.first;
     block_fill_u64(indentations, sizeof(*indentations)*count, (u64)(-1));
     
-#if 0
+    #if 0
     Managed_Scope scope = buffer_get_managed_scope(app, buffer);
     Token_Array *tokens = scope_attachment(app, scope, attachment_tokens, Token_Array);
-#endif
+    #endif
     
     Token_Array token_array = get_token_array_from_buffer(app, buffer);
     Token_Array *tokens = &token_array;
@@ -195,6 +212,9 @@ get_indentation_array(Application_Links *app, Arena *arena, Buffer_ID buffer, Ra
         
         Indent_Line_Cache line_cache = {};
         
+        //NOTE(luis) added this to see if ScopeOpen is part of switch() statement
+        i64 last_switch_token_linenum_pos = 0;
+        
         for (;;){
             Token *token = token_it_read(&token_it);
             
@@ -214,17 +234,33 @@ get_indentation_array(Application_Links *app, Arena *arena, Buffer_ID buffer, Ra
             
             b32 shift_by_actual_indent = false;
             b32 ignore_unfinished_statement = false;
-            if (HasFlag(token->flags, TokenBaseFlag_PreprocessorBody)){
-                this_indent = 0;
+            /*if (HasFlag(token->flags, TokenBaseFlag_PreprocessorBody)){
+                // this_indent = 0; //classic way of just aligning leftmost, which I despise 
+                this_indent = nest->indent;
+            } */
+            if (token->kind == TokenBaseKind_Comment) {//NOTE(luis) this is to completely ignore comemnts and allow for user freedom of indenting however the fuck they want
+                Buffer_Cursor cursor = buffer_compute_cursor(app, buffer, seek_pos(token->pos));
+                this_indent = cursor.col - 1; //not sure why -1
+                if (this_indent < 0) this_indent = 0;
             }
             else{
-                switch (token->kind){
+                switch (token->kind)
+                {
                     case TokenBaseKind_ScopeOpen:
                     {
                         Nest *new_nest = indent__new_nest(arena, &nest_alloc);
                         sll_stack_push(nest, new_nest);
                         nest->kind = TokenBaseKind_ScopeOpen;
                         nest->indent = current_indent + indent_width;
+                    
+                    	//NOTE(luis) added this to prevent indenting switch statements
+                        // what this is basically doing is checking if the line-number of the '{' is on the same line
+                        // or the line before the last switch token line number
+                        //if(line_cache.where_token_starts >= last_switch_token_linenum_pos &&
+                           //line_cache.where_token_starts  < (last_switch_token_linenum_pos + 1))
+                        if (line_cache.where_token_starts == last_switch_token_linenum_pos)
+                        /**/nest->indent = current_indent;	
+                    
                         following_indent = nest->indent;
                         ignore_unfinished_statement = true;
                     }break;
@@ -331,15 +367,25 @@ actual_indent = N; )
                 following_indent += actual_indent;
             }
             
+            #if 0 //NOTE(luis) removed this for testing purposes
             if (token->kind != TokenBaseKind_Comment){
                 in_unfinished_statement = indent__unfinished_statement(token, nest);
                 if (in_unfinished_statement){
                     following_indent += indent_width;
                 }
             }
+            #endif
             
             last_indent = following_indent;
             line_last_indented = line_it;
+            
+            //NOTE(luis) added this
+            if (token->kind == TokenBaseKind_Keyword) {
+                if(token->sub_kind == TokenCppKind_Switch ||
+                   token->sub_kind == TokenCppKind_Namespace) //note added this as well
+                    last_switch_token_linenum_pos = line_cache.where_token_starts;    
+            }
+            
             
             if (!token_it_inc_non_whitespace(&token_it)){
                 break;

@@ -320,9 +320,9 @@ i32 line_number;
 };
 static Command_Metadata fcoder_metacmd_table[297] = {
 { PROC_LINKS(allow_mouse, 0), false, "allow_mouse", 11, "Shows the mouse and causes all mouse input to be processed normally.", 68, "D:\\work\\4ed\\code\\custom\\4coder_default_framework.cpp", 52, 481 },
-{ PROC_LINKS(auto_indent_line_at_cursor, 0), false, "auto_indent_line_at_cursor", 26, "Auto-indents the line on which the cursor sits.", 47, "D:\\work\\4ed\\code\\custom\\4coder_auto_indent.cpp", 46, 420 },
-{ PROC_LINKS(auto_indent_range, 0), false, "auto_indent_range", 17, "Auto-indents the range between the cursor and the mark.", 55, "D:\\work\\4ed\\code\\custom\\4coder_auto_indent.cpp", 46, 430 },
-{ PROC_LINKS(auto_indent_whole_file, 0), false, "auto_indent_whole_file", 22, "Audo-indents the entire current buffer.", 39, "D:\\work\\4ed\\code\\custom\\4coder_auto_indent.cpp", 46, 411 },
+{ PROC_LINKS(auto_indent_line_at_cursor, 0), false, "auto_indent_line_at_cursor", 26, "Auto-indents the line on which the cursor sits.", 47, "D:\\work\\4ed\\code\\custom\\4coder_auto_indent.cpp", 46, 466 },
+{ PROC_LINKS(auto_indent_range, 0), false, "auto_indent_range", 17, "Auto-indents the range between the cursor and the mark.", 55, "D:\\work\\4ed\\code\\custom\\4coder_auto_indent.cpp", 46, 476 },
+{ PROC_LINKS(auto_indent_whole_file, 0), false, "auto_indent_whole_file", 22, "Audo-indents the entire current buffer.", 39, "D:\\work\\4ed\\code\\custom\\4coder_auto_indent.cpp", 46, 457 },
 { PROC_LINKS(backspace_alpha_numeric_boundary, 0), false, "backspace_alpha_numeric_boundary", 32, "Delete characters between the cursor position and the first alphanumeric boundary to the left.", 94, "D:\\work\\4ed\\code\\custom\\4coder_base_commands.cpp", 48, 154 },
 { PROC_LINKS(backspace_char, 0), false, "backspace_char", 14, "Deletes the character to the left of the cursor.", 48, "D:\\work\\4ed\\code\\custom\\4coder_base_commands.cpp", 48, 96 },
 { PROC_LINKS(basic_change_active_panel, 0), false, "basic_change_active_panel", 25, "Change the currently active panel, moving to the panel with the next highest view_id.  Will not skipe the build panel if it is open.", 132, "D:\\work\\4ed\\code\\custom\\4coder_base_commands.cpp", 48, 668 },
@@ -611,7 +611,7 @@ static Command_Metadata fcoder_metacmd_table[297] = {
 { PROC_LINKS(write_hack, 0), false, "write_hack", 10, "At the cursor, insert a '// HACK' comment, includes user name if it was specified in config.4coder.", 99, "D:\\work\\4ed\\code\\custom\\4coder_combined_write_commands.cpp", 58, 82 },
 { PROC_LINKS(write_note, 0), false, "write_note", 10, "At the cursor, insert a '// NOTE' comment, includes user name if it was specified in config.4coder.", 99, "D:\\work\\4ed\\code\\custom\\4coder_combined_write_commands.cpp", 58, 88 },
 { PROC_LINKS(write_space, 0), false, "write_space", 11, "Inserts a space.", 16, "D:\\work\\4ed\\code\\custom\\4coder_base_commands.cpp", 48, 67 },
-{ PROC_LINKS(write_text_and_auto_indent, 0), false, "write_text_and_auto_indent", 26, "Inserts text and auto-indents the line on which the cursor sits if any of the text contains 'layout punctuation' such as ;:{}()[]# and new lines.", 145, "D:\\work\\4ed\\code\\custom\\4coder_auto_indent.cpp", 46, 440 },
+{ PROC_LINKS(write_text_and_auto_indent, 0), false, "write_text_and_auto_indent", 26, "Inserts text and auto-indents the line on which the cursor sits if any of the text contains 'layout punctuation' such as ;:{}()[]# and new lines.", 145, "D:\\work\\4ed\\code\\custom\\4coder_auto_indent.cpp", 46, 486 },
 { PROC_LINKS(write_text_input, 0), false, "write_text_input", 16, "Inserts whatever text was used to trigger this command.", 55, "D:\\work\\4ed\\code\\custom\\4coder_base_commands.cpp", 48, 59 },
 { PROC_LINKS(write_todo, 0), false, "write_todo", 10, "At the cursor, insert a '// TODO' comment, includes user name if it was specified in config.4coder.", 99, "D:\\work\\4ed\\code\\custom\\4coder_combined_write_commands.cpp", 58, 76 },
 { PROC_LINKS(write_underscore, 0), false, "write_underscore", 16, "Inserts an underscore.", 22, "D:\\work\\4ed\\code\\custom\\4coder_base_commands.cpp", 48, 73 },

@@ -630,7 +630,7 @@ cpp_parse_function(Code_Index_File *index, Generic_Parse_State *state, Code_Inde
     };
     
     //skip pass whitespace or pointer stars/ampersands NOTE this isn't a very smart way of doing this
-    while (token) {
+    while (token && token->kind != TokenBaseKind_EOF) {
         bool keep_skipping = false;
         if (token->kind == TokenBaseKind_Comment) {
             keep_skipping = true;
@@ -674,7 +674,7 @@ cpp_parse_function(Code_Index_File *index, Generic_Parse_State *state, Code_Inde
     token = token_it_read(&state->it);
     
     i32 paren_balance = -1;
-    while (token) {
+    while (token && token->kind != TokenBaseKind_EOF) {
         if      (token->kind == TokenBaseKind_ParentheticalOpen)  paren_balance -= 1;
         else if (token->kind == TokenBaseKind_ParentheticalClose) paren_balance += 1;
         
