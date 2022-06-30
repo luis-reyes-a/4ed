@@ -898,16 +898,7 @@ generic_parse_scope(Code_Index_File *index, Generic_Parse_State *state){
         
         // NOTE(luis) added this
         #if 1
-        if (looks_like_return_base_type(token)) { //NOTE this must be called before == Keyword (since it also check keyword)
-            Code_Index_Note *note = cpp_parse_function(index, state, result);
-            if (note && note->nest) {
-                note->nest->parent = result;
-                code_index_push_nest(&result->nest_list, note->nest);
-            }
-            continue;
-        }
-        
-        if (token->kind == TokenBaseKind_Keyword) {
+        if (state->do_cpp_parse) {
             if (token->sub_kind == TokenCppKind_Struct ||
                 token->sub_kind == TokenCppKind_Union ||
                 token->sub_kind == TokenCppKind_Enum) {
@@ -918,9 +909,20 @@ generic_parse_scope(Code_Index_File *index, Generic_Parse_State *state){
                 }
                 continue;
             }
-            
-            if (token->sub_kind == TokenCppKind_Namespace) {
+            else if (token->sub_kind == TokenCppKind_Namespace) {
                 Code_Index_Note *note = cpp_parse_namespace(index, state, result);
+                if (note && note->nest) {
+                    note->nest->parent = result;
+                    code_index_push_nest(&result->nest_list, note->nest);
+                }
+                continue;
+            }
+            else if (token->sub_kind == TokenCppKind_Typedef){
+                cpp_parse_type_def(index, state, result);
+                continue;
+            }
+            else if (looks_like_return_base_type(token)) { //NOTE this must be called before == Keyword (since it also check keyword)
+                Code_Index_Note *note = cpp_parse_function(index, state, result);
                 if (note && note->nest) {
                     note->nest->parent = result;
                     code_index_push_nest(&result->nest_list, note->nest);

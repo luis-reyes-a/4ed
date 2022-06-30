@@ -33,6 +33,10 @@ custom_layer_init(Application_Links *app){
     minibar_string.cap = ArrayCount(minibar_string_buffer);
     minibar_string.size = 0;
     
+    SMALL_CODE_FACE   = RION_load_face_id(app, SCu8("consola.ttf"),  -2);
+    //ITALICS_CODE_FACE = RION_load_face_id(app, SCu8("consolai.ttf"), 0);
+    BOLD_CODE_FACE    = RION_load_face_id(app, SCu8("consolab.ttf"), 0);
+    
     // NOTE(allen): setup for default framework
     default_framework_init(app);
     

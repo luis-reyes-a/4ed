@@ -750,4 +750,72 @@ struct Peek_Code_Index_State {
     u8 identifier_buffer[64];
 };
 
+
+struct Scope_Prefix {
+    String_Const_u8 string;
+    i32 scope_count;
+};
+
+function Scope_Prefix
+get_entire_scope_prefix(Application_Links *app, Arena *arena, Buffer_ID buffer, i64 pos) {
+    
+    Code_Index_File *code_index_file = code_index_get_file(buffer);
+    if (!code_index_file) return {};
+    
+    Scratch_Block scratch(app, arena);
+    i32  outer_note_count = 0;
+    i32  max_outer_note_count = 12;
+    Code_Index_Note **outer_notes = push_array_zero(scratch, Code_Index_Note *, max_outer_note_count);
+    
+    for (Code_Index_Note *note = code_index_file->note_list.first; note; note = note->next) {
+        if (outer_note_count == max_outer_note_count) break;
+        
+        if (pos >= note->nest_range.min && 
+            pos <  note->nest_range.max) {
+            outer_notes[outer_note_count++] = note;
+        }
+    }
+    
+            //insertion sort by greatest to smallest
+    for (i32 i = 1; i < outer_note_count; i += 1) {
+        
+        auto get_size = [](Code_Index_Note *note) {
+            return note->nest_range.max - note->nest_range.min;
+        };
+        
+        i32 next = i;
+        while (next > 0) {
+            i32 prev = next - 1;
+            if (get_size(outer_notes[next]) > get_size(outer_notes[prev])) {
+                SWAP(outer_notes[next], outer_notes[prev]);
+            }
+            next = prev;
+        }
+    }
+    
+    Scope_Prefix result = {};
+    result.scope_count = 1;
+    if (outer_note_count > 0) {
+        String_u8 string = string_u8_push(arena, 512); 
+         
+        string_append(&string, SCu8("::"));    
+        for (i32 i = 0; i < outer_note_count; i += 1) {
+            Code_Index_Note *note = outer_notes[i];
+            string_append(&string, note->text);
+            string_append(&string, SCu8("::"));
+            result.scope_count += 1;
+            
+        //Code_Index_Note *note = outer_notes[i];
+        //push_fancy_stringf(scratch, &list, base_color, "%.*s::", string_expand(note->text)); //makes it in reverse order ezSadge
+        }
+        
+        result.string = SCu8(string);
+    }
+    else { //smaller allocation path
+        result.string = push_stringf(arena, "::");
+    }
+    
+    return result;
+}
+
 #endif //LUIS_CUSTOM_LAYER_H

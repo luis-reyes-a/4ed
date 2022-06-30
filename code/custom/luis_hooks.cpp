@@ -376,7 +376,10 @@ get_token_visual_properties(Application_Links *app, Buffer_ID buffer, Token_Iter
         }   
         else if(note->note_kind == CodeIndexNote_Type || note->note_kind == CodeIndexNote_Type_Definition){
             prop.color = fcolor_resolve(fcolor_id(luiscolor_type));//= 0xffE89393; //pinkish 
-        }  
+        }
+        else if(note->note_kind == CodeIndexNote_Namespace){
+            prop.color = fcolor_resolve(fcolor_id(luiscolor_type));//= 0xffE89393; //pinkish 
+        }
         else if(note->note_kind == CodeIndexNote_Macro) 
         {
             if (!string_match(token_string, str8_lit("assert"))) //use normal color for assert
@@ -390,7 +393,7 @@ get_token_visual_properties(Application_Links *app, Buffer_ID buffer, Token_Iter
     }
     
     if(token->kind == TokenBaseKind_Keyword)           prop.special_face_id = BOLD_CODE_FACE;
-    else if(token->kind == TokenBaseKind_Comment)      prop.special_face_id = ITALICS_CODE_FACE;
+    //else if(token->kind == TokenBaseKind_Comment)      prop.special_face_id = ITALICS_CODE_FACE; //ignoring for now
     else if(token->kind == TokenBaseKind_Preprocessor) prop.underline = true;
     else if (token->kind == TokenBaseKind_Identifier) { //some words not considered keywords for some reason
         if (string_match(token_string, str8_lit("constexpr")) || string_match(token_string, str8_lit("auto")))
@@ -845,59 +848,7 @@ luis_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view_i
     draw_set_clip(app, prev_clip);
 }
 
-function String_Const_u8
-get_entire_scope_parents_at_pos(Application_Links *app, Arena *arena, Buffer_ID buffer, i64 pos) {
-    
-    Code_Index_File *code_index_file = code_index_get_file(buffer);
-    if (!code_index_file) return {};
-    
-    Scratch_Block scratch(app);
-    i32  outer_note_count = 0;
-    i32  max_outer_note_count = 12;
-    Code_Index_Note **outer_notes = push_array_zero(scratch, Code_Index_Note *, max_outer_note_count);
-    
-    for (Code_Index_Note *note = code_index_file->note_list.first; note; note = note->next) {
-        if (outer_note_count == max_outer_note_count) break;
-        
-        if (pos >= note->nest_range.min && 
-            pos <  note->nest_range.max) {
-            outer_notes[outer_note_count++] = note;
-        }
-    }
-    
-            //insertion sort by greatest to smallest
-    for (i32 i = 1; i < outer_note_count; i += 1) {
-        
-        auto get_size = [](Code_Index_Note *note) {
-            return note->nest_range.max - note->nest_range.min;
-        };
-        
-        i32 next = i;
-        while (next > 0) {
-            i32 prev = next - 1;
-            if (get_size(outer_notes[next]) > get_size(outer_notes[prev])) {
-                SWAP(outer_notes[next], outer_notes[prev]);
-            }
-            next = prev;
-        }
-    }
-    
-    String_u8 result = {};
-    if (outer_note_count > 0) {
-        result = string_u8_push(arena, 512);
-        
-        for (i32 i = 0; i < outer_note_count; i += 1) {
-            Code_Index_Note *note = outer_notes[i];
-            string_append(&result, note->text);
-            string_append(&result, SCu8("::"));
-            
-        //Code_Index_Note *note = outer_notes[i];
-        //push_fancy_stringf(scratch, &list, base_color, "%.*s::", string_expand(note->text)); //makes it in reverse order ezSadge
-        }
-    }
-    
-    return SCu8(result);
-}
+
 
 
 function void
@@ -936,9 +887,9 @@ luis_whole_screen_render_caller(Application_Links *app, Frame_Info frame_info) {
             push_fancy_stringf(scratch, &list, base_color, "%.*s  ", string_expand(minibar_string)); //makes it in reverse order ezSadge
         }
         else {
-            String_Const_u8 string = get_entire_scope_parents_at_pos(app, scratch, buffer, cursor_pos);
-            if (string.size > 0) {
-                push_fancy_stringf(scratch, &list, base_color, "%.*s  ", string_expand(string)); //makes it in reverse order ezSadge    
+            Scope_Prefix prefix = get_entire_scope_prefix(app, scratch, buffer, cursor_pos);
+            if (prefix.string.size > 0) {
+                push_fancy_stringf(scratch, &list, base_color, "%.*s  ", string_expand(prefix.string)); //makes it in reverse order ezSadge    
             }    
         }
         

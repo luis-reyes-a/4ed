@@ -1,4 +1,12 @@
 
+//stolen from BYP, pretty cool!
+CUSTOM_COMMAND_SIG(explorer)
+CUSTOM_DOC("Opens file explorer in hot directory")
+{
+	Scratch_Block scratch(app);
+	String_Const_u8 hot = push_hot_directory(app, scratch);
+	exec_system_command(app, 0, buffer_identifier(0), hot, string_u8_litexpr("explorer ."), 0);
+}
 
 CUSTOM_COMMAND_SIG(luis_escape)
 CUSTOM_DOC("escape key")
@@ -347,7 +355,7 @@ CUSTOM_DOC("Close panel. Peek first.") {
     
     View_ID active_view = get_active_view(app, Access_Always);
     if (View_ID peek = luis_get_peek_window(app, active_view)) {
-        view_close(app, active_view);
+        view_close(app, peek);
     }
     else  {
         for(View_ID v = get_view_next(app, 0, Access_Always); v; v = get_view_next(app, v, Access_Always)) {
@@ -357,6 +365,17 @@ CUSTOM_DOC("Close panel. Peek first.") {
             }
         }
         view_close(app, active_view);
+    }
+}
+
+CUSTOM_COMMAND_SIG(luis_matching_file_cpp_same_buffer)
+CUSTOM_DOC("If the current file is a *.cpp or *.h, attempts to open the corresponding *.h or *.cpp file in the other view.")
+{
+    View_ID view = get_active_view(app, Access_Always);
+    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+    Buffer_ID new_buffer = 0;
+    if (get_cpp_matching_file(app, buffer, &new_buffer)){
+        view_set_buffer(app, view, new_buffer, 0);
     }
 }
 
@@ -544,8 +563,8 @@ CUSTOM_DOC("Show code indexes for buffer")
         for(i32 note_index = 0; note_index < file->note_array.count; note_index += 1)
         {
             Code_Index_Note *note = file->note_array.ptrs[note_index];
-            if (note->note_kind == CodeIndexNote_Function ||
-                note->note_kind == CodeIndexNote_Type     ||
+            if (note->note_kind == CodeIndexNote_Function_Definition ||
+                note->note_kind == CodeIndexNote_Type_Definition     ||
                 note->note_kind == CodeIndexNote_Macro)
             {
                 //Lister_Prealloced_String status = {};
@@ -692,8 +711,53 @@ CUSTOM_DOC("prev code index") {
 }
 #endif
 
+
+
 function String_Const_u8
-get_entire_scope_parents_at_pos(Application_Links *app, Arena *arena, Buffer_ID buffer, i64 pos);
+string_remove_whitespace(String_Const_u8 string) {
+    if (string.size == 0) return {};
+    
+    b32 currently_inside_whitespace = false;
+    u64 max_whitespace_pos = 0;
+    
+    //only benefit of doing this in reverse order is that we do less copying potientally because we wouldn't copy around whitespace that we'd removed
+    u64 index = string.size;
+    while (index--) {
+        b32 is_whitespace = character_is_whitespace(string.str[index]); 
+        if (!currently_inside_whitespace) {
+            if (is_whitespace) {
+                currently_inside_whitespace = true;
+                max_whitespace_pos = index + 1;
+            }
+        }
+        else {
+            if (!is_whitespace) {
+                currently_inside_whitespace = false;
+                u64 min_whitespace_pos = index + 1;
+                if (min_whitespace_pos < max_whitespace_pos) {
+                    u64 copy_length = string.size - max_whitespace_pos;
+                    if (copy_length > 0) {
+                        block_copy(string.str + min_whitespace_pos, string.str + max_whitespace_pos, copy_length);
+                    }
+                    string.size -= (max_whitespace_pos - min_whitespace_pos);
+                }
+            }
+        }
+    }
+    
+    if (currently_inside_whitespace) {
+        u64 min_whitespace_pos = 0;
+        if (min_whitespace_pos < max_whitespace_pos) {
+            u64 copy_length = string.size - max_whitespace_pos;
+            if (copy_length > 0) {
+                block_copy(string.str + min_whitespace_pos, string.str + max_whitespace_pos, copy_length);
+            }
+            string.size -= (max_whitespace_pos - min_whitespace_pos);
+        }
+    }
+    
+    return string;
+}
 
 function Peek_Code_Index_State *
 get_code_peek_state(Application_Links *app, View_ID view, i64 pos, View_ID *peek) {
@@ -706,7 +770,70 @@ get_code_peek_state(Application_Links *app, View_ID view, i64 pos, View_ID *peek
     
     
     Scratch_Block scratch(app);
-    String_Const_u8 identifier = push_token_or_word_under_pos(app, scratch, buffer, pos);
+    
+    Scope_Prefix manual_scope_prefix = {};
+    String_Const_u8 identifier = {};
+    
+    Token_Array token_array = get_token_array_from_buffer(app, buffer);
+    if (token_array.tokens) {
+        Token *identifier_token = get_token_from_pos(app, &token_array, pos);
+        //size check is probably redundant here
+        if (identifier_token && identifier_token->kind == TokenBaseKind_Identifier) {
+            Range_i64 range = Ii64(identifier_token);
+            identifier = push_buffer_range(app, scratch, buffer, range);
+            
+            Token *first_identifier = 0;
+            Token_Iterator_Array it = token_iterator_pos(0, &token_array, identifier_token->pos - 1);
+            Token *at = token_it_read(&it);
+            
+            auto is_scope_operator = [](Token *token) -> bool {
+                if (token && token->kind == TokenBaseKind_Operator && token->sub_kind == TokenCppKind_ColonColon) {
+                    return true;
+                }    
+                else return false;
+            };
+            
+            if (is_scope_operator(at)) {
+                b32 began_with_scope_operator = true;
+                manual_scope_prefix.scope_count = 1;
+                token_it_dec_non_whitespace(&it);
+                at = token_it_read(&it);
+                
+                while (at) {
+                    if (at->kind == TokenBaseKind_Identifier) {
+                        first_identifier = at;
+                        began_with_scope_operator = false;
+                    }
+                    else if (is_scope_operator(at)) {
+                        manual_scope_prefix.scope_count += 1;
+                        began_with_scope_operator = true;
+                        /*keep scanning*/
+                    }
+                    else break;
+                    
+                    token_it_dec_non_whitespace(&it);
+                    at = token_it_read(&it);
+                }
+                
+                if (first_identifier) {
+                    range.min = first_identifier->pos;
+                    range.max = identifier_token->pos;
+                    manual_scope_prefix.string = push_buffer_range(app, scratch, buffer, range);;
+                    manual_scope_prefix.string = string_remove_whitespace(manual_scope_prefix.string);
+                    if (!began_with_scope_operator) {
+                        manual_scope_prefix.string = push_stringf(scratch, "::%.*s", string_expand(manual_scope_prefix.string));
+                        manual_scope_prefix.scope_count += 1;
+                    }
+                }
+            }
+            
+            
+        }
+    }
+    else return 0;
+    
+    
+    //String_Const_u8 identifier = push_token_or_word_under_pos(app, scratch, buffer, pos);
     if (identifier.size == 0) return 0;
     
     state->is_first_time_getting = false;
@@ -729,28 +856,26 @@ get_code_peek_state(Application_Links *app, View_ID view, i64 pos, View_ID *peek
         state->identifier.cap  = ArrayCount(state->identifier_buffer);
         string_append(&state->identifier, identifier);
         
-        
-        String_Const_u8 scope_prefix = get_entire_scope_parents_at_pos(app, scratch, buffer, pos);
-        i32 scope_prefix_scope_count = 0;
-        for (i32 i = 0; i < scope_prefix.size; i += 1) {
-            if (i > 0 && scope_prefix.str[i-1] == ':' && scope_prefix.str[i] == ':') {
-                scope_prefix_scope_count += 1;
-            } 
+        Scope_Prefix scope_prefix = manual_scope_prefix;
+        if (scope_prefix.scope_count == 0) {
+            scope_prefix = get_entire_scope_prefix(app, scratch, buffer, pos);
         }
         
-        auto get_match_metric = [&scope_prefix, scope_prefix_scope_count](String_Const_u8 prefix) {
-            i32 search_length = (i32)Min(prefix.size, scope_prefix.size);
+        
+        auto get_match_metric = [&scope_prefix] (Scope_Prefix prefix) -> i32{
+            i32 search_length = (i32)Min(prefix.string.size, scope_prefix.string.size);
             i32 match_count = 0;
             for (i32 i = 0; i < search_length; i += 1) {
-                if (prefix.str[i] == scope_prefix.str[i]) {
-                    if (i > 0 && prefix.str[i-1] == ':' && prefix.str[i] == ':') {
+                if (prefix.string.str[i] == scope_prefix.string.str[i]) {
+                    if (i > 0 && prefix.string.str[i-1] == ':' && prefix.string.str[i] == ':') {
                         match_count += 1;
                     }
                 }
                 else break;
             }
             
-            i32 non_match_count = scope_prefix_scope_count - match_count;
+            i32 non_match_count = prefix.scope_count - match_count;
+            //i32 non_match_count = scope_prefix_scope_count - match_count;
             return match_count - 2*non_match_count;
         };
         
@@ -770,7 +895,7 @@ get_code_peek_state(Application_Links *app, View_ID view, i64 pos, View_ID *peek
                     
                     
                     state->notes[state->note_count++] = note;
-                    String_Const_u8 note_prefix = get_entire_scope_parents_at_pos(app, scratch, note->file->buffer, note->pos.min);
+                    Scope_Prefix note_prefix = get_entire_scope_prefix(app, scratch, note->file->buffer, note->pos.min);
                     i32 note_metric = get_match_metric(note_prefix);
                     
                 	//add to array already sorted
@@ -778,7 +903,7 @@ get_code_peek_state(Application_Links *app, View_ID view, i64 pos, View_ID *peek
                         Code_Index_Note *prev = state->notes[i];
                         Assert (state->notes[i+1] == note); //NOTE (i+1) should always be our note
                         
-                        String_Const_u8 prev_prefix = get_entire_scope_parents_at_pos(app, scratch, prev->file->buffer, prev->pos.min);
+                        Scope_Prefix prev_prefix = get_entire_scope_prefix(app, scratch, prev->file->buffer, prev->pos.min);
                         i32 prev_metric = get_match_metric(prev_prefix);
                         
                         if (prev_metric < note_metric) {
@@ -790,6 +915,8 @@ get_code_peek_state(Application_Links *app, View_ID view, i64 pos, View_ID *peek
             }
             
         }
+        
+        
         
         #if 0
         int k = 0;
@@ -813,6 +940,10 @@ get_code_peek_state(Application_Links *app, View_ID view, i64 pos, View_ID *peek
          
         k -= 1;
         #endif
+        
+        if (state->note_count == 0) {
+            view_close(app, *peek);
+        }
     }
     return state;
 }
