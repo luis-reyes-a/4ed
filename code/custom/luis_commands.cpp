@@ -766,7 +766,11 @@ get_code_peek_state(Application_Links *app, View_ID view, i64 pos, View_ID *peek
     
     Managed_Scope peek_scope = view_get_managed_scope(app, *peek);
     Peek_Code_Index_State *state = scope_attachment(app, peek_scope, view_code_peek_state, Peek_Code_Index_State);
-    if (!state) return 0;
+    if (!state) {
+        view_close(app, *peek);
+        *peek = 0;
+        return 0;   
+    }
     
     
     Scratch_Block scratch(app);
@@ -830,11 +834,19 @@ get_code_peek_state(Application_Links *app, View_ID view, i64 pos, View_ID *peek
             
         }
     }
-    else return 0;
+    else {
+        view_close(app, *peek);
+        *peek = 0;
+        return 0;
+    }
     
     
     //String_Const_u8 identifier = push_token_or_word_under_pos(app, scratch, buffer, pos);
-    if (identifier.size == 0) return 0;
+    if (identifier.size == 0) {
+        view_close(app, *peek);
+        *peek = 0;
+        return 0;
+    }
     
     state->is_first_time_getting = false;
     
@@ -943,6 +955,8 @@ get_code_peek_state(Application_Links *app, View_ID view, i64 pos, View_ID *peek
         
         if (state->note_count == 0) {
             view_close(app, *peek);
+            *peek = 0;
+            state = 0;
         }
     }
     return state;

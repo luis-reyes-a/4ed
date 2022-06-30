@@ -358,6 +358,45 @@ generic_parse_scope(Code_Index_File *index, Generic_Parse_State *state);
 function Code_Index_Nest*
 generic_parse_paren(Code_Index_File *index, Generic_Parse_State *state);
 
+function b32
+maybe_skip_angle_bracket_enclosure(Code_Index_File *index, Generic_Parse_State *state) {
+    generic_parse_skip_soft_tokens(index, state);
+    Token *token = token_it_read(&state->it);
+    if (token && token->kind == TokenBaseKind_Operator && token->sub_kind == TokenCppKind_Less) {
+        generic_parse_inc(state);
+        generic_parse_skip_soft_tokens(index, state);
+        token = token_it_read(&state->it);
+        
+        i32 balance = -1;
+        while (token && token->kind != TokenBaseKind_EOF) {
+            if (token->kind == TokenBaseKind_Operator){
+                if      (token->sub_kind == TokenCppKind_Less) balance -= 1;
+                else if (token->sub_kind == TokenCppKind_Grtr) balance += 1;
+            }  
+            
+            generic_parse_inc(state);
+            generic_parse_skip_soft_tokens(index, state);
+            token = token_it_read(&state->it);
+            if (balance == 0) break;
+        }
+        return true;
+    }
+    return false;
+}
+
+function b32
+maybe_skip_private_or_public_keyword(Code_Index_File *index, Generic_Parse_State *state) {
+    generic_parse_skip_soft_tokens(index, state);
+    Token *token = token_it_read(&state->it);
+    if (token && token->kind == TokenBaseKind_Keyword && (token->sub_kind == TokenCppKind_Private || token->sub_kind == TokenCppKind_Public)) {
+        generic_parse_inc(state);
+        generic_parse_skip_soft_tokens(index, state);
+        token = token_it_read(&state->it);
+        return true;
+    }
+    return false;
+}
+
 function Code_Index_Note *
 cpp_parse_type_structure(Code_Index_File *index, Generic_Parse_State *state, Code_Index_Nest *parent, i32 sub_kind) {
     generic_parse_inc(state);
@@ -365,20 +404,44 @@ cpp_parse_type_structure(Code_Index_File *index, Generic_Parse_State *state, Cod
     if (state->finished){
         return 0; 
     }
-    Token *token = token_it_read(&state->it);
-    if (token && token->kind == TokenBaseKind_Identifier) {
+    Token *identifier_token = token_it_read(&state->it);
+    if (identifier_token && identifier_token->kind == TokenBaseKind_Identifier) {
         generic_parse_inc(state);
         generic_parse_skip_soft_tokens(index, state);
-        Token *peek = token_it_read(&state->it);
-        if (peek != 0 && peek->kind == TokenBaseKind_StatementClose ||
-            peek->kind == TokenBaseKind_ScopeOpen){
+        Token *token = token_it_read(&state->it);
+        
+        //skipp pass classes inheriting from
+        //if (token && token->kind == TokenBaseKind_Operator && token->sub_kind == TokenCppKind_Colon) {
+        //NOTE(luis) single colon is considered to mark the end of the statement, for some reason
+        if (token && token->kind == TokenBaseKind_StatementClose && token->sub_kind == TokenCppKind_Colon) {
+            generic_parse_inc(state);
+            maybe_skip_private_or_public_keyword(index, state);
+            token = token_it_read(&state->it);
             
-            Code_Index_Note_Kind note_kind = (peek->kind == TokenBaseKind_ScopeOpen) ? CodeIndexNote_Type_Definition : CodeIndexNote_Type;
-            Code_Index_Note *note = index_new_note(index, state, Ii64(token), note_kind, parent);
+            while (token && token->kind == TokenBaseKind_Identifier) {
+                generic_parse_inc(state);
+                maybe_skip_angle_bracket_enclosure(index, state);
+                token = token_it_read(&state->it);
+                
+                //if (token->kind == TokenBaseKind_Operator && token->sub_kind == TokenCppKind_Comma) {
+                //NOTE(luis) comma is considered a statement close for some reason...
+                if (token && token->kind == TokenBaseKind_StatementClose && token->sub_kind == TokenCppKind_Comma) {
+                    generic_parse_inc(state);
+                    maybe_skip_private_or_public_keyword(index, state);
+                    token = token_it_read(&state->it);
+                }
+            }
+        }
+        
+        if (token && token->kind == TokenBaseKind_StatementClose ||
+            token->kind == TokenBaseKind_ScopeOpen){
+            
+            Code_Index_Note_Kind note_kind = (token->kind == TokenBaseKind_ScopeOpen) ? CodeIndexNote_Type_Definition : CodeIndexNote_Type;
+            Code_Index_Note *note = index_new_note(index, state, Ii64(identifier_token), note_kind, parent);
             
             #if 1 //NOTE(luis) added this
             if (note && 
-                peek->kind == TokenBaseKind_ScopeOpen && 
+                token->kind == TokenBaseKind_ScopeOpen && 
                 (sub_kind == TokenCppKind_Struct ||
                  sub_kind == TokenCppKind_Union)) {
                 note->nest = generic_parse_scope(index, state);
@@ -948,6 +1011,48 @@ generic_parse_scope(Code_Index_File *index, Generic_Parse_State *state){
             nest->parent = result;
             code_index_push_nest(&result->nest_list, nest);
             
+            continue;
+        }
+        
+        
+        if (token->kind == TokenBaseKind_Keyword) {
+            //eat pass template because otherwise generic_parse_statement will eat pass too many tokens we care about
+            if (token->sub_kind == TokenCppKind_Template) {
+                generic_parse_inc(state);
+                generic_parse_skip_soft_tokens(index, state);
+                token = token_it_read(&state->it);
+                if (token && token->kind == TokenBaseKind_Operator &&
+                    token->sub_kind == TokenCppKind_Less) {
+                    
+                    i32 balance = -1;
+                    generic_parse_inc(state);
+                    generic_parse_skip_soft_tokens(index, state);
+                    token = token_it_read(&state->it);
+                    
+                    while (token && token->kind != TokenBaseKind_EOF) {
+                        if (token->kind == TokenBaseKind_Operator) {
+                            if      (token->sub_kind == TokenCppKind_Less) balance -= 1;
+                            else if (token->sub_kind == TokenCppKind_Grtr) balance += 1;
+                        }
+                        
+                        generic_parse_inc(state);
+                        generic_parse_skip_soft_tokens(index, state);
+                        token = token_it_read(&state->it);
+                        
+                        if (balance == 0) break;
+                    }
+                    
+                }
+                    
+            }
+            //NOTE this will also lead to generic_parse_statement from being called.
+            //honestly why not just get rid of it?... I'm just worried that doing so will break something else
+            //but we really don't care about regular statement nests....
+            //ehh just screw it. Skip pass any keywords we don't parse above 
+            else/* if (token->sub_kind == TokenCppKind_Static ||
+                     token->sub_kind == TokenCppKind_Inline) */{
+                generic_parse_inc(state);
+            }
             continue;
         }
         

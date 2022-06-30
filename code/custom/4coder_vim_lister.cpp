@@ -491,6 +491,7 @@ vim_run_lister(Application_Links *app, Lister *lister){
 			break;
 		}
         
+        
 		if(in.event.kind == InputEventKind_KeyStroke){
             #if 0
 			if(in.event.key.code == KeyCode_W && has_modifier(&in, KeyCode_Control) && lister->handlers.backspace){
@@ -518,7 +519,7 @@ vim_run_lister(Application_Links *app, Lister *lister){
         
         case InputEventKind_TextInsert:{
             //vim_cursor_blink = 0;
-            if(lister->handlers.write_character != 0){
+            if(lister->handlers.write_character) {
                 result = lister->handlers.write_character(app);
                 //lister_textfield_modified = true;
             }
@@ -632,16 +633,19 @@ vim_run_lister(Application_Links *app, Lister *lister){
                 }else{ handled = false; }
             } break;
             
+            //NOTE(luis) setting handling to false will create a textinput event next iteration
             case KeyCode_Comma: { //NOTE(luis) added this
                 if (has_modifier(&in, KeyCode_Control)) {
                     string_append(&lister->text_field, SCu8("_"));
                 }
+                else handled = false;
             } break;
             
             case KeyCode_Period: { //NOTE(luis) added this
                 if (has_modifier(&in, KeyCode_Control)) {
                     string_append(&lister->text_field, SCu8("->"));
-                }
+                } 
+                else handled = false;
             } break;
             
             default:{
