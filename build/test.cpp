@@ -1,5 +1,5 @@
 
-struct Annother_One {
+namespace Another_One {
     template <int SIZE>
     struct Type {
         
@@ -9,5 +9,11 @@ struct Annother_One {
     internal int do_soemthing() {
         
     }
+
+
 }
 
+int main () {
+    Type func = main();
+    Another_One::do_something();
+}

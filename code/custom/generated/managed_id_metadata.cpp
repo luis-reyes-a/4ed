@@ -60,6 +60,7 @@ view_custom_flags = managed_id_declare(app, string_u8_litexpr("attachment"), str
 view_code_peek_state = managed_id_declare(app, string_u8_litexpr("attachment"), string_u8_litexpr("view_code_peek_state"));
 view_prev_render_caller = managed_id_declare(app, string_u8_litexpr("attachment"), string_u8_litexpr("view_prev_render_caller"));
 view_prev_buffer_location = managed_id_declare(app, string_u8_litexpr("attachment"), string_u8_litexpr("view_prev_buffer_location"));
+luiscolor_namespace = managed_id_declare(app, string_u8_litexpr("colors"), string_u8_litexpr("luiscolor_namespace"));
 luiscolor_type = managed_id_declare(app, string_u8_litexpr("colors"), string_u8_litexpr("luiscolor_type"));
 luiscolor_macro = managed_id_declare(app, string_u8_litexpr("colors"), string_u8_litexpr("luiscolor_macro"));
 luiscolor_function = managed_id_declare(app, string_u8_litexpr("colors"), string_u8_litexpr("luiscolor_function"));

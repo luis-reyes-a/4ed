@@ -24,6 +24,7 @@ CUSTOM_ID(attachment, view_prev_render_caller);
 CUSTOM_ID(attachment, view_prev_buffer_location);
 //CUSTOM_ID(attachment, view_current_tab); not good idea, you'd have to store per view, per BUFFER_TAB_GROUP_COUNT
 
+CUSTOM_ID(colors, luiscolor_namespace);
 CUSTOM_ID(colors, luiscolor_type);
 CUSTOM_ID(colors, luiscolor_macro);
 CUSTOM_ID(colors, luiscolor_function);

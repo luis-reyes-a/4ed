@@ -366,11 +366,14 @@ get_token_visual_properties(Application_Links *app, Buffer_ID buffer, Token_Iter
             if(next_next >= (it->tokens + it->count))
                 next_next = 0;
             
+            
             if(next) {
-                if(next->kind == TokenBaseKind_ParentheticalOpen)
+                if(next->kind == TokenBaseKind_ParentheticalOpen &&
+                   next->sub_kind == TokenCppKind_ParenOp)
                     prop.color = fcolor_resolve(fcolor_id(luiscolor_function));
                 else if(next->kind == TokenBaseKind_Whitespace && next_next &&
-                        next_next->kind == TokenBaseKind_ParentheticalOpen)
+                        next_next->kind     == TokenBaseKind_ParentheticalOpen &&
+                        next_next->sub_kind == TokenCppKind_ParenOp)
                     prop.color = fcolor_resolve(fcolor_id(luiscolor_function));   
             }
         }   
@@ -378,7 +381,7 @@ get_token_visual_properties(Application_Links *app, Buffer_ID buffer, Token_Iter
             prop.color = fcolor_resolve(fcolor_id(luiscolor_type));//= 0xffE89393; //pinkish 
         }
         else if(note->note_kind == CodeIndexNote_Namespace){
-            prop.color = fcolor_resolve(fcolor_id(luiscolor_type));//= 0xffE89393; //pinkish 
+            prop.color = fcolor_resolve(fcolor_id(luiscolor_namespace));//= 0xffE89393; //pinkish 
         }
         else if(note->note_kind == CodeIndexNote_Macro) 
         {
@@ -791,6 +794,11 @@ luis_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view_i
     Face_Metrics face_metrics = get_face_metrics(app, face_id);
     f32 line_height = face_metrics.line_height;
     f32 digit_advance = face_metrics.decimal_digit_advance;
+    
+    Rect_f32 global_rect = global_get_screen_rectangle(app);
+	f32 filebar_y = global_rect.y1 - 1.f*line_height - vim_cur_filebar_offset;
+	if(region.y1 >= filebar_y) { region.y1 = filebar_y; }
+    draw_rectangle_fcolor(app, region, 0.f, fcolor_id(defcolor_back));
     
     // NOTE(allen): file bar
     b64 showing_file_bar = false;

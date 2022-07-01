@@ -725,7 +725,8 @@ cpp_parse_function(Code_Index_File *index, Generic_Parse_State *state, Code_Inde
     token = token_it_read(&state->it);
     
     if (!token) return 0;
-    if (token->kind != TokenBaseKind_ParentheticalOpen) return 0; //not a function
+    if (!(token->kind     == TokenBaseKind_ParentheticalOpen &&
+          token->sub_kind == TokenCppKind_ParenOp)) return 0; //not a function
     
     // NOTE(luis) I think the point of this is to continue to keep parsing functions 
     // even if the scope isn't closed (otherwise it would just ignore everything after

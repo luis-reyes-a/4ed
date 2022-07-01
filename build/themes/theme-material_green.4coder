@@ -50,8 +50,11 @@ defcolor_line_numbers_text = 0xFFDCDCCC;
 // luiscolor_macro    = 0xffffa3b1; //light red/pink 0xffff899b; //0xffd38c93; //0xffDFAF8F;
 luiscolor_macro    = 0xffffbe9c; //peach orange 
 
+luiscolor_namespace = 0xfff7dea6; //0xff85ffba; //0xFFF78C6C;
+luiscolor_type      = 0xff85ffcd; //0xFFF78C6C;
+
 luiscolor_function = 0xff8CD0D3;
-luiscolor_type     = 0xffa3ffda; //0xFFF78C6C;
+
 luiscolor_modal_cursor = 0xffff5e73;
 
 luiscolor_variable_decl = defcolor_text_default; //0xfffdffde;
