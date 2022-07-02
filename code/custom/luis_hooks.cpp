@@ -786,19 +786,46 @@ luis_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view_i
     View_ID active_view = get_active_view(app, Access_Always);
     b32 is_active_view = (active_view == view_id);
     
-    Rect_f32 region = draw_background_and_margin(app, view_id, is_active_view);
-    Rect_f32 prev_clip = draw_set_clip(app, region);
-    
     Buffer_ID buffer = view_get_buffer(app, view_id, Access_Always);
     Face_ID face_id = get_face_id(app, buffer);
     Face_Metrics face_metrics = get_face_metrics(app, face_id);
     f32 line_height = face_metrics.line_height;
     f32 digit_advance = face_metrics.decimal_digit_advance;
     
+    #if 0
+    Rect_f32 region = draw_background_and_margin(app, view_id, is_active_view);
+    Rect_f32 prev_clip = draw_set_clip(app, region);
+    #else
+    
+    Rect_f32 view_rect = view_get_screen_rect(app, view_id);
     Rect_f32 global_rect = global_get_screen_rectangle(app);
-	f32 filebar_y = global_rect.y1 - 1.f*line_height - vim_cur_filebar_offset;
-	if(region.y1 >= filebar_y) { region.y1 = filebar_y; }
+    //f32 filebar_y = global_rect.y1 - 1.f*line_height - vim_cur_filebar_offset;
+    if (vim_nxt_filebar_offset < vim_cur_filebar_offset) {
+        f32 filebar_y = global_rect.y1 - 1.f*line_height - vim_nxt_filebar_offset;
+        view_rect.y1 = Min(view_rect.y1, filebar_y);
+    }
+    else {
+        f32 filebar_y = global_rect.y1 - 1.f*line_height - vim_cur_filebar_offset;
+        view_rect.y1 = Min(view_rect.y1, filebar_y);
+    }
+    
+    f32 width = 3.0f;
+    Rect_f32 region = rect_inner(view_rect, width);
     draw_rectangle_fcolor(app, region, 0.f, fcolor_id(defcolor_back));
+    
+    if (width > 0.f) {
+        FColor margin_color = get_panel_margin_color(is_active_view?UIHighlight_Active:UIHighlight_None);
+        draw_margin(app, view_rect, region, margin_color);
+    }
+    
+    
+    Rect_f32 prev_clip = draw_set_clip(app, view_rect);
+    #endif
+    
+    
+    
+    
+    
     
     // NOTE(allen): file bar
     b64 showing_file_bar = false;
@@ -807,6 +834,23 @@ luis_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view_i
         draw_file_bar(app, view_id, buffer, face_id, pair.min);
         region = pair.max;
     }
+    
+    #if 0
+    draw_set_clip(app, region);
+
+	// Draw borders
+	if(region.x0 > global_rect.x0){
+		Rect_f32_Pair border_pair = rect_split_left_right(region, 2.f);
+		draw_rectangle_fcolor(app, border_pair.a, 0.f, fcolor_id(defcolor_margin));
+		region = border_pair.b;
+	}
+	if(region.x1 < global_rect.x1){
+		Rect_f32_Pair border_pair = rect_split_left_right_neg(region, 2.f);
+		draw_rectangle_fcolor(app, border_pair.b, 0.f, fcolor_id(defcolor_margin));
+		region = border_pair.a;
+	}
+	region.y0 += 3.f;
+    #endif
     
     Buffer_Scroll scroll = view_get_buffer_scroll(app, view_id);
     

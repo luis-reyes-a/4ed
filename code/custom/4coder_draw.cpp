@@ -80,11 +80,11 @@ draw_rectangle_outline_fcolor(Application_Links *app, Rect_f32 rect, f32 roundne
 }
 
 function void
-draw_margin(Application_Links *app, Rect_f32 outer, Rect_f32 inner, ARGB_Color color){
-    draw_rectangle(app, Rf32(outer.x0, outer.y0, outer.x1, inner.y0), 0.f, color);
-    draw_rectangle(app, Rf32(outer.x0, inner.y1, outer.x1, outer.y1), 0.f, color);
-    draw_rectangle(app, Rf32(outer.x0, inner.y0, inner.x0, inner.y1), 0.f, color);
-    draw_rectangle(app, Rf32(inner.x1, inner.y0, outer.x1, inner.y1), 0.f, color);
+draw_margin(Application_Links *app, Rect_f32 outer, Rect_f32 inner, ARGB_Color color) {
+    draw_rectangle(app, Rf32(outer.x0, outer.y0, outer.x1, inner.y0), 0.f, color); //top
+    draw_rectangle(app, Rf32(outer.x0, inner.y1, outer.x1, outer.y1), 0.f, color); //bottom
+    draw_rectangle(app, Rf32(outer.x0, inner.y0, inner.x0, inner.y1), 0.f, color); //left
+    draw_rectangle(app, Rf32(inner.x1, inner.y0, outer.x1, inner.y1), 0.f, color); //right
 }
 
 function void
