@@ -17,3 +17,12 @@ int main () {
     Type func = main();
     Another_One::do_something();
 }
+
+struct MyClass {
+    void do_thing();
+};
+
+
+void MyClass::do_thing(int thing) {
+    
+}

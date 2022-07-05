@@ -720,9 +720,18 @@ cpp_parse_function(Code_Index_File *index, Generic_Parse_State *state, Code_Inde
     
     Token *identifier_token = token;
     
-    generic_parse_inc(state);
-    generic_parse_skip_soft_tokens(index, state);
-    token = token_it_read(&state->it);
+    while (token && token->kind != TokenBaseKind_EOF) {
+        if (token->kind == TokenBaseKind_Operator && token->sub_kind == TokenCppKind_ColonColon) {
+            generic_parse_inc(state);
+            generic_parse_skip_soft_tokens(index, state);
+            token = token_it_read(&state->it);
+        } else if (token->kind == TokenBaseKind_Identifier) {
+            identifier_token = token;
+            generic_parse_inc(state);
+            generic_parse_skip_soft_tokens(index, state);
+            token = token_it_read(&state->it);
+        } else break;
+    }
     
     if (!token) return 0;
     if (!(token->kind     == TokenBaseKind_ParentheticalOpen &&
