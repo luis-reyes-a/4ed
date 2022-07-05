@@ -798,13 +798,17 @@ luis_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view_i
     #else
     
     Rect_f32 view_rect = view_get_screen_rect(app, view_id);
+    Rect_f32 prev_clip = draw_set_clip(app, view_rect); //this is what BYP does
     Rect_f32 global_rect = global_get_screen_rectangle(app);
+    
     //f32 filebar_y = global_rect.y1 - 1.f*line_height - vim_cur_filebar_offset;
+    //i'm not sure why we have to do this branch here and not BYP ...
     if (vim_nxt_filebar_offset < vim_cur_filebar_offset) {
         f32 filebar_y = global_rect.y1 - 1.f*line_height - vim_nxt_filebar_offset;
         view_rect.y1 = Min(view_rect.y1, filebar_y);
     }
-    else {
+    else 
+    {
         f32 filebar_y = global_rect.y1 - 1.f*line_height - vim_cur_filebar_offset;
         view_rect.y1 = Min(view_rect.y1, filebar_y);
     }
@@ -819,12 +823,8 @@ luis_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view_i
     }
     
     
-    Rect_f32 prev_clip = draw_set_clip(app, view_rect);
+    //Rect_f32 prev_clip = draw_set_clip(app, view_rect);
     #endif
-    
-    
-    
-    
     
     
     // NOTE(allen): file bar
@@ -891,6 +891,17 @@ luis_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view_i
     // NOTE(allen): draw line numbers
     if (show_line_number_margins){
         draw_line_number_margin(app, view_id, buffer, face_id, text_layout_id, line_number_rect);
+    }
+    
+    bool byp_drop_shadow = true;
+    if (byp_drop_shadow) {
+		Buffer_Point shadow_point = buffer_point;
+		Face_Description desc = get_face_description(app, face_id);
+		shadow_point.pixel_shift -= Max((f32(desc.parameters.pt_size) / 8), 1.f)*V2f32(1.f, 1.f);
+		Text_Layout_ID shadow_layout_id = text_layout_create(app, buffer, region, shadow_point);
+		paint_text_color(app, shadow_layout_id, text_layout_get_visible_range(app, text_layout_id), 0xBB000000);
+		draw_text_layout_default(app, shadow_layout_id);
+		text_layout_free(app, shadow_layout_id);
     }
     
     // NOTE(allen): draw the buffer

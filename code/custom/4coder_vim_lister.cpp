@@ -287,7 +287,8 @@ vim_lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
 	if(lister == 0) { return; }
     
  // Set up region for drawing
-	Rect_f32 region = global_get_screen_rectangle(app);
+    Rect_f32 global_rect = global_get_screen_rectangle(app); 
+	Rect_f32 region = global_rect;
 	Rect_f32 prev_clip = draw_set_clip(app, region);
     
 	Face_ID face_id = get_face_id(app, 0);
@@ -306,8 +307,16 @@ vim_lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
 	lister->visible_count = Min(col_num*row_num, lister->filtered.count);
     
  // TODO(BYP) check exactly why row_num+2. Had to update when changing block_height
-	region = rect_split_top_bottom_neg(region, (row_num+2)*block_height).max;
+    #if 0
+	//region = rect_split_top_bottom_neg(region, (row_num+2)*block_height).max;
+    region = rect_split_top_bottom_neg(region, (row_num+1)*block_height).max;
 	region = rect_split_top_bottom_neg(region, 1.f*line_height).min;
+    #else
+    region.y1 -= 1.f*line_height;
+    region.y0 = region.y1 - vim_cur_filebar_offset;
+    //f32 filebar_y = global_rect.y1 - 1.f*line_height - vim_cur_filebar_offset;
+    //region.y0 = filebar_y;
+    #endif
 	vim_nxt_filebar_offset = row_num*block_height + 0.1f;
  // non-zero so when lister displays no results, it still displays the cursor
     
