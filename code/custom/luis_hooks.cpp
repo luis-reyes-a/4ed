@@ -833,6 +833,7 @@ luis_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view_i
         Rect_f32_Pair pair = layout_file_bar_on_top(region, line_height);
         draw_file_bar(app, view_id, buffer, face_id, pair.min);
         region = pair.max;
+        draw_set_clip(app, region); //otherwise drop shadow clips to filebar
     }
     
     #if 0

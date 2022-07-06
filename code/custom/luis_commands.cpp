@@ -368,14 +368,69 @@ CUSTOM_DOC("Close panel. Peek first.") {
     }
 }
 
+function b32
+get_cpp_matching_file_dont_make(Application_Links *app, Buffer_ID buffer, Buffer_ID *buffer_out){
+    b32 result = false;
+    Scratch_Block scratch(app);
+    String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer);
+    if (file_name.size > 0){
+        String_Const_u8 extension = string_file_extension(file_name);
+        String_Const_u8 new_extensions[2] = {};
+        i32 new_extensions_count = 0;
+        if (string_match(extension, string_u8_litexpr("cpp")) || string_match(extension, string_u8_litexpr("cc"))){
+            new_extensions[0] = string_u8_litexpr("h");
+            new_extensions[1] = string_u8_litexpr("hpp");
+            new_extensions_count = 2;
+        }
+        else if (string_match(extension, string_u8_litexpr("c"))){
+            new_extensions[0] = string_u8_litexpr("h");
+            new_extensions_count = 1;
+        }
+        else if (string_match(extension, string_u8_litexpr("h"))){
+            new_extensions[0] = string_u8_litexpr("cpp");
+            new_extensions[1] = string_u8_litexpr("c");
+            new_extensions_count = 2;
+        }
+        else if (string_match(extension, string_u8_litexpr("hpp"))){
+            new_extensions[0] = string_u8_litexpr("cpp");
+            new_extensions_count = 1;
+        }
+        
+        String_Const_u8 file_without_extension = string_file_without_extension(file_name);
+        for (i32 i = 0; i < new_extensions_count; i += 1){
+            Temp_Memory temp = begin_temp(scratch);
+            String_Const_u8 new_extension = new_extensions[i];
+            String_Const_u8 new_file_name = push_u8_stringf(scratch, "%.*s.%.*s", string_expand(file_without_extension), string_expand(new_extension));
+            if (open_file(app, buffer_out, new_file_name, false, true)){
+                result = true;
+                break;
+            }
+            end_temp(temp);
+        }
+    }
+    
+    return(result);
+}
+
 CUSTOM_COMMAND_SIG(luis_matching_file_cpp_same_buffer)
-CUSTOM_DOC("If the current file is a *.cpp or *.h, attempts to open the corresponding *.h or *.cpp file in the other view.")
-{
+CUSTOM_DOC("If the current file is a *.cpp or *.h, attempts to open the corresponding *.h or *.cpp file in the other view.") {
     View_ID view = get_active_view(app, Access_Always);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
     Buffer_ID new_buffer = 0;
-    if (get_cpp_matching_file(app, buffer, &new_buffer)){
+    if (get_cpp_matching_file_dont_make(app, buffer, &new_buffer)){
         view_set_buffer(app, view, new_buffer, 0);
+    }
+}
+
+CUSTOM_COMMAND_SIG(luis_matching_file_cpp)
+CUSTOM_DOC("If the current file is a *.cpp or *.h, attempts to open the corresponding *.h or *.cpp file in the other view.") {
+    View_ID view = get_active_view(app, Access_Always);
+    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+    Buffer_ID new_buffer = 0;
+    if (get_cpp_matching_file_dont_make(app, buffer, &new_buffer)){
+        view = get_next_view_looped_primary_panels(app, view, Access_Always);
+        view_set_buffer(app, view, new_buffer, 0);
+        view_set_active(app, view);
     }
 }
 

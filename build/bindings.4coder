@@ -111,7 +111,9 @@ keys_file = {
     { "query_replace",               "Q", "Control" },
 	{ "query_replace_identifier",    "Q", "Alt" },
     { "luis_matching_file_cpp_same_buffer",  "K", "Control" },
-    { "open_matching_file_cpp",              "K", "Alt" },
+    { "luis_matching_file_cpp",              "K", "Alt" },
+
+
 
     //{ "luis_show_buffer_code_notes",      "N", "Control" },
     //{ "luis_code_index_all_buffers",        "N", "Control" },
