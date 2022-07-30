@@ -354,12 +354,10 @@ is_paren_range(Application_Links *app, Buffer_ID buffer, Range_i64 range)
 {	return buffer_get_char(app, buffer, range.min) == '(' && buffer_get_char(app, buffer, range.max-1) == ')';	}
 
 internal b32
-find_maximal_parens(Application_Links *app, Buffer_ID buffer, i64 pos, Range_i64 *out_range)
-{
+find_maximal_parens(Application_Links *app, Buffer_ID buffer, i64 pos, Range_i64 *out_range) {
    b32 found = false;
    Range_i64 range = {};
-   if(find_surrounding_nest(app, buffer, pos, FindNest_Paren, &range))
-   {
+   if(find_surrounding_nest(app, buffer, pos, FindNest_Paren, &range)) {
       Range_i64 last_paren_range_found = {};
       if(is_paren_range(app, buffer, range)) last_paren_range_found = range;
          

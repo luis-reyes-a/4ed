@@ -26,7 +26,7 @@
 function void luis_default_mapping(Mapping *mapping, i64 global_id, i64 file_id, i64 code_id);
 
 void
-custom_layer_init(Application_Links *app){
+custom_layer_init(Application_Links *app) {
     Thread_Context *tctx = get_thread_context(app);
     
     minibar_string.str = minibar_string_buffer;
@@ -60,6 +60,14 @@ custom_layer_init(Application_Links *app){
     luis_default_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
 #endif
 	setup_essential_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
+    
+    {
+        MappingScope();
+        SelectMapping(&framework_mapping);
+        SelectMap(global_map_id);
+        BindCore(luis_startup, CoreCode_Startup);
+    }
+    
 }
 
 function void

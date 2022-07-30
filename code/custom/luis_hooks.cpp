@@ -1,5 +1,39 @@
 
 
+CUSTOM_COMMAND_SIG(luis_startup)
+CUSTOM_DOC("Default command for responding to a startup event")
+{
+    ProfileScope(app, "default startup");
+    User_Input input = get_current_input(app);
+    if (match_core_code(&input, CoreCode_Startup)){
+        String_Const_u8_Array file_names = input.event.core.file_names;
+        load_themes_default_folder(app);
+        default_4coder_initialize(app, file_names);
+        //default_4coder_side_by_side_panels(app, file_names);
+        {
+            Buffer_Identifier identifier = buffer_identifier(string_u8_litexpr("*messages*"));
+            Buffer_ID id = buffer_identifier_to_id(app, identifier);
+            View_ID view = get_active_view(app, Access_Always);
+            new_view_settings(app, view);
+            view_set_buffer(app, view, id, 0);    
+        }
+        
+        b32 auto_load = def_get_config_b32(vars_save_string_lit("automatically_load_project"));
+        if (auto_load){
+            load_project(app);
+        }
+    }
+    
+    {
+        def_audio_init();
+    }
+    
+    {
+        def_enable_virtual_whitespace = def_get_config_b32(vars_save_string_lit("enable_virtual_whitespace"));
+        clear_all_layouts(app);
+    }
+}
+
 CUSTOM_COMMAND_SIG(luis_view_input_handler)
 CUSTOM_DOC("Input consumption loop for default view behavior")
 {
@@ -44,14 +78,14 @@ CUSTOM_DOC("Input consumption loop for default view behavior")
             *next_rewrite = Rewrite_None;
             
             Custom_Command_Function *cmd = map_result.command;
-            if(cmd == open_panel_vsplit || cmd == open_panel_hsplit)
+            if (cmd == open_panel_vsplit || cmd == open_panel_hsplit)
             {
-                if(luis_view_has_flags(app, view, VIEW_IS_PEEK_WINDOW))
+                if (luis_view_has_flags(app, view, VIEW_IS_PEEK_WINDOW))
                     actually_do_command = false;
                 else 
                 {
                     View_ID peek = luis_get_peek_window(app, view);
-                    if(peek)
+                    if (peek)
                     {
                         view_close(app, peek);
                         //try_to_recover_peek_view_after_command = true;   
@@ -61,27 +95,27 @@ CUSTOM_DOC("Input consumption loop for default view behavior")
         }
         
         ProfileCloseNow(view_input_profile);
-        if(actually_do_command)
+        if (actually_do_command)
         {
             //b32 do_kill_tab_group = luis_view_has_flags(app, view, VIEW_KILL_TAB_GROUP_ON_VIEW_CLOSE);
             //i32 tab_group_index = view_get_tab_group_index(app, view);
             Buffer_ID buffer_id_before_command = view_get_buffer(app, view, Access_Always);
             i64 cursor_pos_before_executed_command = view_get_cursor_pos(app, view); 
             map_result.command(app);
-            if(map_result.command == paste)
+            if (map_result.command == paste)
                 PREV_PASTE_INIT_CURSOR_POS = cursor_pos_before_executed_command;
             else
                 PREV_PASTE_INIT_CURSOR_POS = -1;
             
-            //if(map_result.command != luis_peek_code_index_up && map_result.command != luis_peek_code_index_down)
+            //if (map_result.command != luis_peek_code_index_up && map_result.command != luis_peek_code_index_down)
                 //CURSOR_PEEK_CODE_INDEX_RELATIVE_LINE_OFFSET = -1;
             
             //NOTE we do this here instead of view_change_buffer because there we don't know
             //what the previous cursor pos and I can't find a way to get a view's buffer's cursor pos
-            if(view_get_buffer(app, view, Access_Always) != buffer_id_before_command)
+            if (view_get_buffer(app, view, Access_Always) != buffer_id_before_command)
             {
                 View_Buffer_Location *loc = view_get_prev_buffer_location(app, view);
-                if(loc)
+                if (loc)
                 {
                     loc->buffer = buffer_id_before_command;
                     loc->cursor = cursor_pos_before_executed_command;
@@ -89,21 +123,21 @@ CUSTOM_DOC("Input consumption loop for default view behavior")
             }
             
             View_ID new_active_view = get_active_view(app, Access_Always); 
-            if(active_view != new_active_view) //we changed active view here, update bindings as well
+            if (active_view != new_active_view) //we changed active view here, update bindings as well
             {
                 update_buffer_bindings_for_modal_toggling(app, view_get_buffer(app, new_active_view, Access_Always));
             }
-            //if(!view_exists(app, view) && do_kill_tab_group) //pseudo-hook for when a view is being destroyed
+            //if (!view_exists(app, view) && do_kill_tab_group) //pseudo-hook for when a view is being destroyed
             //{
             //kill_tab_group(app, tab_group_index);
             //}
         }
         
         #if 0
-        if(try_to_recover_peek_view_after_command)
+        if (try_to_recover_peek_view_after_command)
         {
             Peek_Code_Index_State *state = scope_attachment(app, scope, view_code_peek_state, Peek_Code_Index_State);
-            if(state)
+            if (state)
             {
                 peek_next_code_index(app, view, state, state->index);
                 view_set_active(app, view); //peek_next_code_index sets peek active, so we just undo it... yeah it's messy
@@ -129,14 +163,14 @@ CUSTOM_DOC("Input consumption loop for default view behavior")
             if (fcoder_mode == FCoderMode_NotepadLike && (view == current_active_view))
             {
                 b32 snap_mark_to_cursor = true;
-                if(luis_view_has_flags(app, view, VIEW_NOTEPAD_MODE_MARK_SET))
+                if (luis_view_has_flags(app, view, VIEW_NOTEPAD_MODE_MARK_SET))
                 {
                     snap_mark_to_cursor = false;
                     Custom_Command_Function *cmd = map_result.command;
                     //TODO it would be really neat if we could supply meta-data to the custom command functions to say stuff
                     //like this shouldn't snap mark to cursor (instead of doing this wierd thing of setting globals and reading it back here)
                     //this way the user could just a prepass on all the default commands and change the meta-data to their liking
-                    if(cmd == cut || cmd == copy || cmd == paste || cmd == paste_and_indent || cmd == backspace_char ||
+                    if (cmd == cut || cmd == copy || cmd == paste || cmd == paste_and_indent || cmd == backspace_char ||
                        cmd == write_text_input || cmd == write_space || cmd == luis_write_underscore || cmd == luis_write_pointer_arrow ||
                        cmd == luis_write_tab || cmd == luis_write_newline || cmd == write_text_and_auto_indent ||
                        cmd == auto_indent_line_at_cursor || cmd == auto_indent_whole_file || cmd == auto_indent_range ||
@@ -147,7 +181,7 @@ CUSTOM_DOC("Input consumption loop for default view behavior")
                         snap_mark_to_cursor = true;
                     }   
                 }
-                if(snap_mark_to_cursor)
+                if (snap_mark_to_cursor)
                 {
                     i64 pos = view_get_cursor_pos(app, view);
                     view_set_mark(app, view, seek_pos(pos));
@@ -162,7 +196,7 @@ function void
 vim_animate_filebar(Application_Links *app, Frame_Info frame_info){
 #if 1
 	f32 diff = vim_nxt_filebar_offset - vim_cur_filebar_offset;
-	if(fabs(diff) > 1.0f){
+	if (fabs(diff) > 1.0f){
 		vim_cur_filebar_offset += diff*frame_info.animation_dt*25.0f;
 		animate_in_n_milliseconds(app, 0);
 	}else{
@@ -176,7 +210,7 @@ vim_animate_filebar(Application_Links *app, Frame_Info frame_info){
 function void
 luis_tick(Application_Links *app, Frame_Info frame_info){
 	code_index_update_tick(app);
-	if(tick_all_fade_ranges(app, frame_info.animation_dt)){
+	if (tick_all_fade_ranges(app, frame_info.animation_dt)){
 		animate_in_n_milliseconds(app, 0);
 	}
 
@@ -187,7 +221,7 @@ luis_tick(Application_Links *app, Frame_Info frame_info){
 	//fold_tick(app, frame_info);
 
 	b32 enable_virtual_whitespace = def_get_config_b32(vars_save_string_lit("enable_virtual_whitespace"));
-	if(enable_virtual_whitespace != def_enable_virtual_whitespace){
+	if (enable_virtual_whitespace != def_enable_virtual_whitespace){
 		def_enable_virtual_whitespace = enable_virtual_whitespace;
 		clear_all_layouts(app);
 	}
@@ -209,16 +243,16 @@ maybe_draw_string_with_printf_specifier_highlight(Application_Links *app, Text_L
         u64 normal_length = 0; //we iterate until we reach a specifier, color normal substring, specifier, and continue
         for(u64 i = 0; i < string.size; /*we increment i ourselves*/ ) 
         {
-            if(string.str[i] == '\\' || string.str[i] == '%')
+            if (string.str[i] == '\\' || string.str[i] == '%')
             {
-                if(normal_length) //draw normal substring
+                if (normal_length) //draw normal substring
                     paint_text_color(app, text_layout_id, Ii64_size(token->pos + normal_at, normal_length), str_argb);
                 
                 //decides whether to actually color in the case where user hasn't finished typing the specifier
                 b32 actually_found_specifier = false;
                 i32 specifier_length = 0;
                 
-                if(string.str[i] == '\\')  
+                if (string.str[i] == '\\')  
                 {
                     //NOTE 4coder seems to not lex a token as a string token if nothing comes after the first '\'
                     //meaning it seems safe to just assume the specifier is complete and of length 2
@@ -231,7 +265,7 @@ maybe_draw_string_with_printf_specifier_highlight(Application_Links *app, Text_L
                 
                 //increments length but if we reach the ending " we just 'break' out and draw
                 #define INCREMENT_SPECIFIER_LENGTH do {specifier_length += 1; \
-                    if((i + specifier_length) >= (string.size - 1)) goto JUST_DRAW_THE_FREAKING_STRING; } while(0)
+                    if ((i + specifier_length) >= (string.size - 1)) goto JUST_DRAW_THE_FREAKING_STRING; } while(0)
                 
                 //next character to see if it's part of the specifier
                 #define NEXT string.str[i + specifier_length]
@@ -239,42 +273,42 @@ maybe_draw_string_with_printf_specifier_highlight(Application_Links *app, Text_L
                 INCREMENT_SPECIFIER_LENGTH; //for first %
                 
                 //[flags] 
-                if(NEXT == '+' || NEXT == '-' || NEXT == '#' || NEXT == '0' /*|| NEXT == ' '*/)	
+                if (NEXT == '+' || NEXT == '-' || NEXT == '#' || NEXT == '0' /*|| NEXT == ' '*/)	
                     INCREMENT_SPECIFIER_LENGTH;
                 
                 //[width] is either '*' or a sequence of numbers denoting the width
-                if(NEXT == '*')	INCREMENT_SPECIFIER_LENGTH;
-                else if(character_is_base10(NEXT))
+                if (NEXT == '*')	INCREMENT_SPECIFIER_LENGTH;
+                else if (character_is_base10(NEXT))
                 {
                     while(character_is_base10(NEXT)) INCREMENT_SPECIFIER_LENGTH;
                 }
                 
                 //[precision] begins with '.' and followed by either '*' or a sequence of numbers
-                if(NEXT == '.')
+                if (NEXT == '.')
                 {
                     INCREMENT_SPECIFIER_LENGTH;
-                    if(NEXT == '*') INCREMENT_SPECIFIER_LENGTH;
-                    else if(character_is_base10(NEXT))
+                    if (NEXT == '*') INCREMENT_SPECIFIER_LENGTH;
+                    else if (character_is_base10(NEXT))
                     {
                         while(character_is_base10(NEXT)) INCREMENT_SPECIFIER_LENGTH;
                     }
                 }
                 
                 //[length] length can either be h, l, j, z, t, hh, ll
-                if(NEXT == 'j' || NEXT == 'z' || NEXT == 't') INCREMENT_SPECIFIER_LENGTH; 
-                else if(NEXT == 'h')  //hh
+                if (NEXT == 'j' || NEXT == 'z' || NEXT == 't') INCREMENT_SPECIFIER_LENGTH; 
+                else if (NEXT == 'h')  //hh
                 {
                     INCREMENT_SPECIFIER_LENGTH;
-                    if(NEXT == 'h') INCREMENT_SPECIFIER_LENGTH; //second h 
+                    if (NEXT == 'h') INCREMENT_SPECIFIER_LENGTH; //second h 
                 }
-                else if(NEXT == 'l') //ll
+                else if (NEXT == 'l') //ll
                 {
                     INCREMENT_SPECIFIER_LENGTH;
-                    if(NEXT == 'l') INCREMENT_SPECIFIER_LENGTH; //second l
+                    if (NEXT == 'l') INCREMENT_SPECIFIER_LENGTH; //second l
                 }
                 
                 //the actual specifier where we decide if to actually highlight
-                if(NEXT == 'd' || NEXT == 'i' || NEXT == 'u' || NEXT == 'o' || NEXT == 'x' || NEXT == 'X' ||
+                if (NEXT == 'd' || NEXT == 'i' || NEXT == 'u' || NEXT == 'o' || NEXT == 'x' || NEXT == 'X' ||
                     NEXT == 'f' || NEXT == 'e' || NEXT == 'g' || NEXT == '%' || NEXT == 'c' || NEXT == 's' || 
                     NEXT == 'p' || NEXT == 'n')
                 /*NEXT == 'F' || NEXT == 'E' || NEXT == 'G' || NEXT == 'a' || NEXT == 'A' ||*/
@@ -300,7 +334,7 @@ maybe_draw_string_with_printf_specifier_highlight(Application_Links *app, Text_L
         }
         //we do this one more time bc we only draw the normnal substring *before* specifiers 
         //so the normal substring after the last specifier won't come up in the loop
-        if(normal_length) paint_text_color(app, text_layout_id, Ii64_size(token->pos + normal_at, normal_length), str_argb);
+        if (normal_length) paint_text_color(app, text_layout_id, Ii64_size(token->pos + normal_at, normal_length), str_argb);
     }
     return drew_special_comment_token;
 }
@@ -316,14 +350,14 @@ internal b32
 does_token_look_like_var_identifier(Application_Links *app, Buffer_ID buffer, Token_Iterator_Array *it, Token *identifier)
 {
     b32 looks_like_var = false;
-    if(identifier->kind == TokenBaseKind_Identifier)
+    if (identifier->kind == TokenBaseKind_Identifier)
     {
         //NOTE(luis) this won't handle macros even markup one's that expand to nothing
         for(Token *token = identifier - 1; token >= it->tokens; token -= 1)
         {
-            if(token->kind == TokenBaseKind_Whitespace) ; //keep going
-            else if(token->kind == TokenBaseKind_Operator && token->sub_kind == TokenCppKind_Star) ; //keep going
-            else if(token->kind == TokenBaseKind_Identifier) //stop, see if it looks like a note type
+            if (token->kind == TokenBaseKind_Whitespace) ; //keep going
+            else if (token->kind == TokenBaseKind_Operator && token->sub_kind == TokenCppKind_Star) ; //keep going
+            else if (token->kind == TokenBaseKind_Identifier) //stop, see if it looks like a note type
             {
                 Scratch_Block scratch(app);
                 String_Const_u8 string = push_token_lexeme(app, scratch, buffer, token);
@@ -331,7 +365,7 @@ does_token_look_like_var_identifier(Application_Links *app, Buffer_ID buffer, To
                 looks_like_var = note && (note->note_kind == CodeIndexNote_Type);
                 break;
             }
-            else if(token->kind == TokenBaseKind_Keyword) //stop, see if it's a built-in keyword type
+            else if (token->kind == TokenBaseKind_Keyword) //stop, see if it's a built-in keyword type
             {
                 looks_like_var = (token->sub_kind == TokenCppKind_Void ||
                     token->sub_kind == TokenCppKind_Bool ||
@@ -358,46 +392,46 @@ get_token_visual_properties(Application_Links *app, Buffer_ID buffer, Token_Iter
     
     Code_Index_Note *note = code_index_note_from_string(token_string);
     if (note) {
-        if(note->note_kind == CodeIndexNote_Function || note->note_kind == CodeIndexNote_Function_Definition) {
+        if (note->note_kind == CodeIndexNote_Function || note->note_kind == CodeIndexNote_Function_Definition) {
             Token *next = token + 1;
-            if(next >= (it->tokens + it->count))
-                next = 0;
-            Token *next_next = next + 1;
-            if(next_next >= (it->tokens + it->count))
-                next_next = 0;
+            if (next >= (it->tokens + it->count)) next = 0;
             
+            if (next && next->kind == TokenBaseKind_Whitespace) {
+                next += 1;
+                if (next >= (it->tokens + it->count)) next = 0;
+            }
             
-            if(next) {
-                if(next->kind == TokenBaseKind_ParentheticalOpen &&
-                   next->sub_kind == TokenCppKind_ParenOp)
+            if (next) {
+                if ((next->kind == TokenBaseKind_ParentheticalOpen && next->sub_kind == TokenCppKind_ParenOp) ||
+                     next->kind == TokenBaseKind_Operator          && next->sub_kind == TokenCppKind_Less) {
                     prop.color = fcolor_resolve(fcolor_id(luiscolor_function));
-                else if(next->kind == TokenBaseKind_Whitespace && next_next &&
-                        next_next->kind     == TokenBaseKind_ParentheticalOpen &&
-                        next_next->sub_kind == TokenCppKind_ParenOp)
-                    prop.color = fcolor_resolve(fcolor_id(luiscolor_function));   
+                }   
             }
         }   
-        else if(note->note_kind == CodeIndexNote_Type || note->note_kind == CodeIndexNote_Type_Definition){
+        else if (note->note_kind == CodeIndexNote_Type || note->note_kind == CodeIndexNote_Type_Definition){
             prop.color = fcolor_resolve(fcolor_id(luiscolor_type));//= 0xffE89393; //pinkish 
         }
-        else if(note->note_kind == CodeIndexNote_Namespace){
+        else if (note->note_kind == CodeIndexNote_Namespace){
             prop.color = fcolor_resolve(fcolor_id(luiscolor_namespace));//= 0xffE89393; //pinkish 
         }
-        else if(note->note_kind == CodeIndexNote_Macro) 
+        else if (note->note_kind == CodeIndexNote_Macro) 
         {
-            if (!string_match(token_string, str8_lit("assert"))) //use normal color for assert
-                prop.color = fcolor_resolve(fcolor_id(luiscolor_macro));//= 0xffDFAF8F; //orange   
+            if (!string_match(token_string, str8_lit("assert"))       && 
+                !string_match(token_string, str8_lit("if_assert"))    &&
+                !string_match(token_string, str8_lit("defer_assert"))) { //use normal color for assert
+                prop.color = fcolor_resolve(fcolor_id(luiscolor_macro));//= 0xffDFAF8F; //orange
+            }  
         }    
     }
     else {
-        if(does_token_look_like_var_identifier(app, buffer, it, token)) prop.color = fcolor_resolve(fcolor_id(luiscolor_variable_decl));
-        else if(token->kind == TokenBaseKind_Operator && token->sub_kind == TokenCppKind_Not)
+        if (does_token_look_like_var_identifier(app, buffer, it, token)) prop.color = fcolor_resolve(fcolor_id(luiscolor_variable_decl));
+        else if (token->kind == TokenBaseKind_Operator && token->sub_kind == TokenCppKind_Not)
             prop.color = fcolor_resolve(fcolor_id(luiscolor_logical_not));    
     }
     
-    if(token->kind == TokenBaseKind_Keyword)           prop.special_face_id = BOLD_CODE_FACE;
-    //else if(token->kind == TokenBaseKind_Comment)      prop.special_face_id = ITALICS_CODE_FACE; //ignoring for now
-    else if(token->kind == TokenBaseKind_Preprocessor) prop.underline = true;
+    if (token->kind == TokenBaseKind_Keyword)           prop.special_face_id = BOLD_CODE_FACE;
+    //else if (token->kind == TokenBaseKind_Comment)      prop.special_face_id = ITALICS_CODE_FACE; //ignoring for now
+    else if (token->kind == TokenBaseKind_Preprocessor) prop.underline = true;
     else if (token->kind == TokenBaseKind_Identifier) { //some words not considered keywords for some reason
         if (string_match(token_string, str8_lit("constexpr")) || string_match(token_string, str8_lit("auto")))
         {
@@ -459,6 +493,69 @@ luis_draw_character_block_outline(Application_Links *app, Text_Layout_ID layout,
     }
 }
 
+internal b32
+draw_paren_range_and_its_sub_ranges(Application_Links *app, Buffer_ID buffer, Text_Layout_ID text_layout_id, Range_i64 max_range, i32 color_index) {
+    b32 drew_range_and_subranges = false;
+    Range_i64 visible_range = text_layout_get_visible_range(app, text_layout_id);
+    if (range_overlap(max_range, visible_range)) {
+        Color_Array color_array = finalize_color_array(defcolor_text_cycle);
+        ARGB_Color color = color_array.vals[color_index % color_array.count];
+        paint_text_color_pos(app, text_layout_id, max_range.min,   color);
+        paint_text_color_pos(app, text_layout_id, max_range.max-1, color);
+        
+        i32 range_count = 0;
+        Range_i64 ranges[16];
+        if(find_next_parens_absolute(app, buffer, max_range.min, ranges + 0) &&
+           range_overlap(ranges[0], max_range) && range_overlap(ranges[0], visible_range)) //find first sub range
+        {
+            drew_range_and_subranges = true;
+            range_count = 1;
+            while(range_count < ArrayCount(ranges) && 
+                  find_next_parens_absolute(app, buffer, ranges[range_count-1].max-1, ranges + range_count))
+            {
+                if(range_overlap(ranges[range_count], max_range) && range_overlap(ranges[range_count], visible_range))
+                range_count += 1;
+                else break;
+            }
+            
+            for(i32 i = 0; i < range_count; i += 1)
+            draw_paren_range_and_its_sub_ranges(app, buffer, text_layout_id, ranges[i], color_index + 1);
+        }
+        
+        #if 1 //draw commas to match the max_range color we chose
+        Token_Array token_array = get_token_array_from_buffer(app, buffer);
+        Token_Iterator_Array it = token_iterator_pos(0, &token_array, max_range.min + 1);
+        for(;;)
+        {
+            Token *token = token_it_read(&it);
+            if(!token) break;
+            if(token->pos >= (max_range.max-1)) break;
+            if(token->pos >= visible_range.max) break;
+            
+            
+            if((token->kind == TokenBaseKind_StatementClose && token->sub_kind == TokenCppKind_Comma))
+                //token->kind == TokenBaseKind_Operator)
+            {
+                b32 in_another_subrange = false;
+                for(i32 i = 0; i < range_count; i += 1)
+                {
+                    if(token->pos > ranges[i].min && token->pos < ranges[i].max)
+                    {
+                        in_another_subrange = true;
+                        break;
+                    }
+                }
+                
+                if(!in_another_subrange)
+                paint_text_color(app, text_layout_id, Ii64_size(token->pos, token->size), color);
+            }
+            if(!token_it_inc_all(&it))	break;
+        }
+        #endif
+    }
+    return drew_range_and_subranges;
+}
+
 function void
 luis_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id,
     Buffer_ID buffer, Text_Layout_ID text_layout_id,
@@ -495,46 +592,71 @@ luis_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id,
     Token_Array token_array = get_token_array_from_buffer(app, buffer);
     if (token_array.tokens != 0) {
         //Scratch_Block scratch(app);
-        b32 ate_an_assert = false;
-        i32 assert_paren_balance = 0;
+        
+        b32 ate_assert_keyword = false;
+        i32 paren_balance = 0;
+        {
+            Range_i64 range = {visible_range.min};
+            while (find_surrounding_nest(app, buffer, range.min, FindNest_Paren, &range)) {
+                if (range.min < visible_range.min) { //this only needs to be checked the first time, but whatevs
+                    paren_balance += 1;
+                }
+            }
+            
+            if (paren_balance < 0) { //see if it's from an assert
+                Token *before = token_from_pos(&token_array, range.min - 1);
+                if (before->kind == TokenBaseKind_Whitespace) {
+                    before -= 1;
+                    if (before < token_array.tokens) before = 0;
+                }
+                
+                if (before && before->kind == TokenBaseKind_Identifier) {
+                    Scratch_Block scratch(app);
+                    String_Const_u8 token_string = push_token_lexeme(app, scratch, buffer, before);
+                    if (string_match(token_string, str8_lit("assert")) ||
+                        string_match(token_string, str8_lit("if_assert")) ||
+                        string_match(token_string, str8_lit("defer_assert"))) {
+                        ate_assert_keyword = true;
+                    }
+                } 
+            }
+        }
+        
         Token_Iterator_Array it = token_iterator_pos(0, &token_array, visible_range.first);
         Token *token = token_it_read(&it);
         while (token && token->pos < visible_range.one_past_last) {
-            
-            if((cursor_pos >= token->pos) && (cursor_pos < (token->pos + token->size)))
+            if ((cursor_pos >= token->pos) && (cursor_pos < (token->pos + token->size)))
                 token_cursor_over = token;
             
-            if(!maybe_draw_string_with_printf_specifier_highlight(app, text_layout_id, buffer, token)) {
+            if (!maybe_draw_string_with_printf_specifier_highlight(app, text_layout_id, buffer, token)) {
                 Scratch_Block scratch(app);
                 String_Const_u8 token_string = push_token_lexeme(app, scratch, buffer, token);
                 Token_Visual_Properties prop = get_token_visual_properties(app, buffer, &it, token, token_string);
                 
-                #if 1 //assert test here
+                #if 1 //make words inside parents fade out a bit (make ones inside assert macros even more faded out)
                 if (token->kind == TokenBaseKind_Identifier && 
                     (string_match(token_string, str8_lit("assert")) ||
-                     string_match(token_string, str8_lit("if_assert")))) {
-                    ate_an_assert = true;
+                     string_match(token_string, str8_lit("if_assert")) ||
+                     string_match(token_string, str8_lit("defer_assert")))) {
+                    ate_assert_keyword = true;
+                } 
+                
+                if (token->kind == TokenBaseKind_ParentheticalOpen) {
+                    paren_balance += 1;    
+                } else if (token->kind == TokenBaseKind_ParentheticalClose) {
+                    paren_balance -= 1;
+                    
+                    if (paren_balance == 0) ate_assert_keyword = false;
                 }
                 
-                if (ate_an_assert) {
-                    if (token->kind == TokenBaseKind_ParentheticalOpen)
-                        assert_paren_balance += 1;
-                    else if (token->kind == TokenBaseKind_ParentheticalClose) {
-                        assert_paren_balance -= 1;
-                        
-                        if (assert_paren_balance == 0)
-                            ate_an_assert = false;
-                    }
-                }
-                
-                if (ate_an_assert && assert_paren_balance > 0) 
-                {
+                if (paren_balance > 0) {
                     //NOTE we do this check to avoid fading away the first matching paren
-                    if (!(assert_paren_balance == 1 && token->kind == TokenBaseKind_ParentheticalOpen))
-                    {
+                    if (!(paren_balance == 1 && token->kind == TokenBaseKind_ParentheticalOpen)) {
                         Vec4_f32 color_v4 = unpack_color(prop.color);
-                        color_v4.a *= 0.6f;
+                        f32 scale = ate_assert_keyword ? 0.4f : 0.6f;
+                        color_v4.a *= scale;
                         prop.color = pack_color(color_v4);    
+                        
                     }
                     
                 }
@@ -543,14 +665,14 @@ luis_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id,
                 
                 //TODO changing font size doesn't scale the other fonts well
                 Rect_f32 first_rect = text_layout_character_on_screen(app, text_layout_id, token->pos);
-                if(prop.special_face_id)
+                if (prop.special_face_id)
                     draw_buffer_range(app, buffer, text_layout_id, prop.special_face_id, Ii64_size(token->pos, token->size), prop.color);
                 else	
                     paint_text_color(app, text_layout_id, Ii64_size(token->pos, token->size), prop.color);
                 
                 //TODO maybe just render a small rectangle
                 String_Const_u8 underline_str = SCu8("_______________________________________________________________________________________________________________________________________________________________________________________________");
-                if(prop.underline && (u64)token->size <= underline_str.size)
+                if (prop.underline && (u64)token->size <= underline_str.size)
                 {
                     underline_str.size = (u64)token->size;
                     draw_string(app, face_id, underline_str, first_rect.p0, prop.color);
@@ -573,37 +695,34 @@ luis_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id,
         
         #if 0 //ignoring this for now
         b32 do_draw_brace_lines = true;
-        if(do_draw_brace_lines)
+        if (do_draw_brace_lines)
         {
             Range_i64 range;
             b32 found_next_scope = find_maximal_scope(app, buffer, visible_range.min, &range);
-            if(!found_next_scope && find_next_scope_absolute(app, buffer, visible_range.min, &range))
+            if (!found_next_scope && find_next_scope_absolute(app, buffer, visible_range.min, &range))
                 found_next_scope = range_overlap(range, visible_range);
             
             while(found_next_scope)
             {
-                if(range_overlap(range, visible_range)) 
+                if (range_overlap(range, visible_range)) 
                     draw_brace_lines(app, view_id, buffer, text_layout_id, range, rect);
                 found_next_scope = find_next_scope_absolute(app, buffer, range.min+1, &range);
-                if(found_next_scope && range.min > visible_range.max) break;
+                if (found_next_scope && range.min > visible_range.max) break;
             }
         }
         #endif
         
-        #if 0
-        b32 do_draw_colored_parens = false;
-        if(do_draw_colored_parens)
-        {
+        #if 1
+        b32 do_draw_colored_parens = true;
+        if (do_draw_colored_parens) {
             //get the first max_parens
             Range_i64 max_range;
-            if(find_maximal_parens(app,       buffer, visible_range.min, &max_range) ||
-                find_next_parens_absolute(app, buffer, visible_range.min, &max_range))
-            {
-                while(range_overlap(max_range, visible_range))
-                {
+            if (find_maximal_parens(app,       buffer, visible_range.min, &max_range) ||
+                find_next_parens_absolute(app, buffer, visible_range.min, &max_range)) {
+                while (range_overlap(max_range, visible_range)) {
                     draw_paren_range_and_its_sub_ranges(app, buffer, text_layout_id, max_range, 0);
                     b32 found_next = find_next_parens_absolute(app, buffer, max_range.max-1, &max_range);
-                    if(!found_next) break;
+                    if (!found_next) break;
                 }
             }
         }
@@ -665,7 +784,7 @@ luis_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id,
     }
     
     // NOTE(luis): draw cursor
-    if(fcoder_mode == FCoderMode_NotepadLike)
+    if (fcoder_mode == FCoderMode_NotepadLike)
     {
         b32 has_highlight_range = draw_highlight_range(app, view_id, buffer, text_layout_id, cursor_roundness);
         if (!has_highlight_range)
@@ -676,7 +795,7 @@ luis_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id,
             i64 mark_pos = view_get_mark_pos(app, view_id);
             if (is_active_view){
                 //draw selection range if any...
-                if(fcoder_mode == FCoderMode_NotepadLike && cursor_pos != mark_pos)
+                if (fcoder_mode == FCoderMode_NotepadLike && cursor_pos != mark_pos)
                 {
                     Range_i64 range = Ii64(cursor_pos, mark_pos);
                     luis_draw_character_block_outline(app, text_layout_id, range, metrics.normal_advance*50*0.01f, fcolor_id(defcolor_highlight));
@@ -684,7 +803,7 @@ luis_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id,
                 //mark block and character over
                 FColor cursor_color = fcolor_id(defcolor_cursor, cursor_sub_id);
                 FColor mark_color   = fcolor_id(defcolor_mark);
-                if(IN_MODAL_MODE) cursor_color = fcolor_id(luiscolor_modal_cursor);//fcolor_id(defcolor_highlight);
+                if (IN_MODAL_MODE) cursor_color = fcolor_id(luiscolor_modal_cursor);//fcolor_id(defcolor_highlight);
                 draw_character_block(app, text_layout_id, mark_pos, cursor_roundness, mark_color);
                 draw_character_block(app, text_layout_id, cursor_pos, cursor_roundness, cursor_color);
                 paint_text_color_pos(app, text_layout_id, cursor_pos,
@@ -702,7 +821,7 @@ luis_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id,
             }
         }
     }
-    else if(fcoder_mode == FCoderMode_Original)
+    else if (fcoder_mode == FCoderMode_Original)
     {
         draw_original_4coder_style_cursor_mark_highlight(app, view_id, is_active_view, buffer, text_layout_id, cursor_roundness, mark_thickness);
     }
@@ -714,19 +833,19 @@ luis_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id,
     draw_text_layout_default(app, text_layout_id);
     
     #if 0 //I think this was suppoed to be a tooltip popup but I never used it
-    if(CURSOR_PEEK_CODE_INDEX_RELATIVE_LINE_OFFSET >= 0 &&
+    if (CURSOR_PEEK_CODE_INDEX_RELATIVE_LINE_OFFSET >= 0 &&
         token_cursor_over && token_cursor_over->kind == TokenBaseKind_Identifier)
     {
         FColor highlight_fcolor = fcolor_id(defcolor_pop2);
         Scratch_Block scratch(app);
         String_Const_u8 token_string = push_token_lexeme(app, scratch, buffer, token_cursor_over);
         Code_Index_Note *note = code_index_note_from_string(token_string);
-        if(note)
+        if (note)
         {
             i64 line_start = get_line_number_from_pos(app, note->file->buffer, note->pos.start);
             line_start += CURSOR_PEEK_CODE_INDEX_RELATIVE_LINE_OFFSET;
             i32 num_lines_to_peek = 8;
-            //if(note->kind == Code_Index_Note_Kind
+            //if (note->kind == Code_Index_Note_Kind
             
             Fancy_Block block = {};
             {
@@ -840,12 +959,12 @@ luis_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view_i
     draw_set_clip(app, region);
 
 	// Draw borders
-	if(region.x0 > global_rect.x0){
+	if (region.x0 > global_rect.x0){
 		Rect_f32_Pair border_pair = rect_split_left_right(region, 2.f);
 		draw_rectangle_fcolor(app, border_pair.a, 0.f, fcolor_id(defcolor_margin));
 		region = border_pair.b;
 	}
-	if(region.x1 < global_rect.x1){
+	if (region.x1 < global_rect.x1){
 		Rect_f32_Pair border_pair = rect_split_left_right_neg(region, 2.f);
 		draw_rectangle_fcolor(app, border_pair.b, 0.f, fcolor_id(defcolor_margin));
 		region = border_pair.a;

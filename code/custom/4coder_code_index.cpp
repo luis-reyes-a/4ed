@@ -680,17 +680,43 @@ operator+(Defer_Statement_Dummy_Type, LAMBDA code)
 //only way to differentiate is to parse the arguments or keep track of if the scope we're in is inside a function call
 //since c++ can't have functions inside functions, having a way to tell what scope type we're in might be the best way....
 
+
 function Code_Index_Note *
 cpp_parse_function(Code_Index_File *index, Generic_Parse_State *state, Code_Index_Nest *parent) {
-    generic_parse_inc(state);
-    Token *token = token_it_read(&state->it);
-    Token *reset_point = token;
-    
+    generic_parse_inc(state); //moves pass the type identifier
+    Token *reset_point = token_it_read(&state->it);
     defer {
         if (reset_point) {
             state->it = token_iterator(state->it.user_id, state->it.tokens, state->it.count, reset_point);
         }
     };
+    
+    
+    generic_parse_skip_soft_tokens(index, state);
+    Token *token = token_it_read(&state->it);
+    if (!token) return 0;
+    
+    // if after identifier we have ::identifier1::::identifier2::identifier3:: skipp pass it
+    // we don't have to do this for the angle bracket stuff because we don't parse the inside of it. We just skip it
+    if (token->kind == TokenBaseKind_Operator && token->sub_kind == TokenCppKind_ColonColon) {
+        b32 expect_colon_colon = true;
+        while (token) {
+            if (expect_colon_colon) {
+                if (!(token->kind == TokenBaseKind_Operator && token->sub_kind == TokenCppKind_ColonColon)) break;
+            } else {
+                if (token->kind != TokenBaseKind_Identifier) break;
+            }
+            
+            expect_colon_colon = !expect_colon_colon;
+            generic_parse_inc(state);
+            generic_parse_skip_soft_tokens(index, state);
+            token = token_it_read(&state->it);
+        }    
+    }
+    
+    maybe_skip_angle_bracket_enclosure(index, state); //skip pass template declaration if any
+    token = token_it_read(&state->it);
+    if (!token) return 0;
     
     //skip pass whitespace or pointer stars/ampersands NOTE this isn't a very smart way of doing this
     while (token && token->kind != TokenBaseKind_EOF) {
