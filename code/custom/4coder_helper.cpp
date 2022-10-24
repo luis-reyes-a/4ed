@@ -1561,15 +1561,25 @@ query_user_general(Application_Links *app, Query_Bar *bar, b32 force_number, Str
             Mapping *mapping = ctx.mapping;
             Command_Map *map = mapping_get_map(mapping, ctx.map_id);
             Command_Binding binding = map_get_binding_recursive(mapping, map, &in.event);
-            if (binding.custom != 0){
-                Command_Metadata *metadata = get_command_metadata(binding.custom);
-                if (metadata != 0){
-                    if (metadata->is_ui){
-                        view_enqueue_command_function(app, view, binding.custom);
-                        break;
+            if (binding.custom) {
+                if (binding.custom == luis_write_underscore) {
+                    String_u8 string = Su8(bar->string.str, bar->string.size, bar->string_capacity);
+                    string_append(&string, SCu8("_"));
+                    bar->string.size = string.string.size;
+                } else if (binding.custom == luis_write_pointer_arrow) {
+                    String_u8 string = Su8(bar->string.str, bar->string.size, bar->string_capacity);
+                    string_append(&string, SCu8("->"));
+                    bar->string.size = string.string.size;
+                } else {
+                    Command_Metadata *metadata = get_command_metadata(binding.custom);
+                    if (metadata != 0){
+                        if (metadata->is_ui){
+                            view_enqueue_command_function(app, view, binding.custom);
+                            break;
+                        }
                     }
+                    binding.custom(app);    
                 }
-                binding.custom(app);
             }
             else{
                 leave_current_input_unhandled(app);

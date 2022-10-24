@@ -24,6 +24,7 @@ CUSTOM_ID(attachment, view_prev_render_caller);
 CUSTOM_ID(attachment, view_prev_buffer_location);
 //CUSTOM_ID(attachment, view_current_tab); not good idea, you'd have to store per view, per BUFFER_TAB_GROUP_COUNT
 
+
 CUSTOM_ID(colors, luiscolor_namespace);
 CUSTOM_ID(colors, luiscolor_type);
 CUSTOM_ID(colors, luiscolor_macro);
@@ -123,6 +124,23 @@ find_tab_with_buffer_id(Buffer_Tab_Group *group, Buffer_ID id)
 }
 #endif
 
+internal Panel_ID
+get_sibling_panel(Application_Links *app, Panel_ID parent_panel, Panel_ID child_panel) {
+    if (!child_panel || !parent_panel) return 0;
+    
+    Panel_ID min_panel = panel_get_child(app, parent_panel, Side_Min);
+    Panel_ID max_panel = panel_get_child(app, parent_panel, Side_Max);
+    assert ((min_panel == child_panel) || (max_panel == child_panel));
+    Panel_ID bro_panel = (child_panel == min_panel) ? max_panel : min_panel;
+    return bro_panel;
+}
+
+internal Panel_ID
+get_sibling_panel(Application_Links *app, Panel_ID panel) {
+    Panel_ID parent_panel = panel_get_parent(app, panel);
+    return get_sibling_panel(app, parent_panel, panel);
+    
+}
 
 internal View_ID
 luis_get_other_child_view(Application_Links *app, View_ID view)
@@ -290,8 +308,7 @@ get_visual_line_start_end_pos(Application_Links *app, View_ID view, i64 linenum)
 
 
 internal void
-center_view(Application_Links *app, View_ID view, float shift_y)
-{
+center_view(Application_Links *app, View_ID view, float shift_y) {
    if(!view)	return;
    //View_ID view = get_active_view(app, Access_ReadVisible);
    Rect_f32 region = view_get_buffer_region(app, view);
@@ -306,8 +323,9 @@ center_view(Application_Links *app, View_ID view, float shift_y)
 }
 
 CUSTOM_COMMAND_SIG(luis_center_view_top)
-CUSTOM_DOC("Centers the view vertically on the line on which the cursor sits.")
-{	center_view(app, get_active_view(app, Access_ReadVisible), 0.333333333333f);	}
+CUSTOM_DOC("Centers the view vertically on the line on which the cursor sits.") {	
+    center_view(app, get_active_view(app, Access_ReadVisible), 0.333333333333f);	
+}
 
 
 

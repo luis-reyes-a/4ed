@@ -1,11 +1,20 @@
 
 //stolen from BYP, pretty cool!
-CUSTOM_COMMAND_SIG(explorer)
-CUSTOM_DOC("Opens file explorer in hot directory")
-{
-	Scratch_Block scratch(app);
+CUSTOM_COMMAND_SIG(show_file_in_explorer)
+CUSTOM_DOC("Opens file explorer in hot directory") {
+    Scratch_Block scratch(app);
+    #if 0 //BYP version
 	String_Const_u8 hot = push_hot_directory(app, scratch);
-	exec_system_command(app, 0, buffer_identifier(0), hot, string_u8_litexpr("explorer ."), 0);
+    #else //mine uses file hot directory
+    View_ID view = get_active_view(app, Access_Always);
+    Buffer_ID buffer_id = view_get_buffer(app, view, Access_Always);
+    String_Const_u8 hot = get_directory_for_buffer(app, scratch, buffer_id);
+    if (hot.size == 0) {
+        hot = push_hot_directory(app, scratch); //use current hot directory if looking at *scratch* for example
+    }
+    #endif
+    exec_system_command(app, 0, buffer_identifier(0), hot, string_u8_litexpr("explorer ."), 0);
+    
 }
 
 CUSTOM_COMMAND_SIG(luis_escape)
@@ -18,8 +27,8 @@ CUSTOM_COMMAND_SIG(luis_toggle_modal_mode)
 CUSTOM_DOC("Toggles modal mode") {	
 	IN_MODAL_MODE = !IN_MODAL_MODE;
     
-	View_ID view        = get_active_view(app, Access_Always);
-	Buffer_ID buffer_id = view_get_buffer(app, view, Access_Always);
+    View_ID view        = get_active_view(app, Access_Always);
+    Buffer_ID buffer_id = view_get_buffer(app, view, Access_Always);
     update_buffer_bindings_for_modal_toggling(app, buffer_id);
 }
 
@@ -37,17 +46,6 @@ CUSTOM_DOC("open in new in same tab")
     if(directory.size) set_hot_directory(app, directory);
     //tab_state_dont_peek_new_buffer(); 
     interactive_open_or_new(app);
-    //Buffer_ID new_buffer_id = view_get_buffer(app, view, Access_Always);
-    //Buffer_Tab_State *state = get_buffer_tab_state_for_view(app, view);
-    //if(state && !make_new_tab) //update the current buffer id tab
-    //{
-    //i32 tab_index = get_tab_index_for_buffer_or_matching_cpp_buffer_id(state, new_buffer_id);
-    //if(tab_index != -1) state->current_tab = tab_index;
-    
-    //Buffer_Tab *tab = get_current_tab(state);
-    //tab->id = new_buffer_id;
-    //view_set_buffer(app, view, new_buffer_id, 0); dont have to do this since call to interactive_open_or_new_same_tab does it for us
-    //}
 }
 
 CUSTOM_COMMAND_SIG(luis_home)
@@ -75,8 +73,7 @@ CUSTOM_DOC("move right")
 
 
 internal void
-luis_set_mark(Application_Links *app, View_ID view, i64 pos)
-{
+luis_set_mark(Application_Links *app, View_ID view, i64 pos) {
     luis_view_set_flags(app, view, VIEW_NOTEPAD_MODE_MARK_SET);
     view_set_mark(app, view, seek_pos(pos));
 }
@@ -153,10 +150,8 @@ CUSTOM_DOC("writes {}")
 }
 
 CUSTOM_COMMAND_SIG(luis_indent_range)
-CUSTOM_DOC("indent_range")
-{
-    if(PREV_PASTE_INIT_CURSOR_POS > -1)
-    {
+CUSTOM_DOC("indent_range") {
+    if(PREV_PASTE_INIT_CURSOR_POS > -1) {
         View_ID view = get_active_view(app, Access_ReadWriteVisible);
         Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
         Range_i64 range = Ii64(PREV_PASTE_INIT_CURSOR_POS, view_get_cursor_pos(app, view));
@@ -167,6 +162,165 @@ CUSTOM_DOC("indent_range")
         }
     }
     else auto_indent_range(app);
+}
+
+CUSTOM_COMMAND_SIG(luis_add_tab)
+CUSTOM_DOC("add tab to line start") {
+    View_ID view = get_active_view(app, Access_ReadWriteVisible);
+    if (!view) return;
+
+    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+    i64 cursor_pos = view_get_cursor_pos(app, view);
+    i64 mark_pos   = view_get_mark_pos(app, view);
+    
+    i64 min = cursor_pos;
+    i64 max = mark_pos;
+    if (min > max) SWAP(min, max);
+    
+    i64 line_start = get_line_number_from_pos(app, view_get_buffer(app, view, Access_Always), min);
+    i64 line_end   = get_line_number_from_pos(app, view_get_buffer(app, view, Access_Always), max);
+    
+    b32 indent_with_tabs = def_get_config_b32(vars_save_string_lit("indent_with_tabs"));
+    i32 indent_width     = (i32)def_get_config_u64(app, vars_save_string_lit("indent_width"));
+    
+    u8 spaces[] = "                                                                         ";    
+    String_Const_u8 insert;
+    insert.str = spaces;
+    insert.size = Min(indent_width, ArrayCount(spaces)-1);;
+    if (indent_with_tabs) insert = SCu8("\t");
+    
+    for (i64 linenum = line_start; linenum <= line_end; linenum += 1) {
+        i64 start_pos = get_line_start_pos(app, buffer, linenum);
+        //write_text_at(app, insert, start_pos);
+        buffer_replace_range(app, buffer, Ii64(start_pos), insert);
+    }
+}
+
+CUSTOM_COMMAND_SIG(luis_add_space)
+CUSTOM_DOC("add space to line start") {
+    View_ID view = get_active_view(app, Access_ReadWriteVisible);
+    if (!view) return;
+
+    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+    i64 cursor_pos = view_get_cursor_pos(app, view);
+    i64 mark_pos   = view_get_mark_pos(app, view);
+    
+    i64 min = cursor_pos;
+    i64 max = mark_pos;
+    if (min > max) SWAP(min, max);
+    
+    i64 line_start = get_line_number_from_pos(app, view_get_buffer(app, view, Access_Always), min);
+    i64 line_end   = get_line_number_from_pos(app, view_get_buffer(app, view, Access_Always), max);
+    String_Const_u8 insert = SCu8(" ");
+    
+    for (i64 linenum = line_start; linenum <= line_end; linenum += 1) {
+        i64 start_pos = get_line_start_pos(app, buffer, linenum);
+        //write_text_at(app, insert, start_pos);
+        buffer_replace_range(app, buffer, Ii64(start_pos), insert);
+    }
+}
+
+CUSTOM_COMMAND_SIG(luis_remove_tab)
+CUSTOM_DOC("remove tab from line start") {
+    View_ID view = get_active_view(app, Access_ReadWriteVisible);
+    if (!view) return;
+
+    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+    i64 cursor_pos = view_get_cursor_pos(app, view);
+    i64 mark_pos   = view_get_mark_pos(app, view);
+    
+    i64 min = cursor_pos;
+    i64 max = mark_pos;
+    if (min > max) SWAP(min, max);
+    
+    i64 line_start = get_line_number_from_pos(app, view_get_buffer(app, view, Access_Always), min);
+    i64 line_end   = get_line_number_from_pos(app, view_get_buffer(app, view, Access_Always), max);
+    
+    i32 indent_width     = (i32)def_get_config_u64(app, vars_save_string_lit("indent_width"));
+    
+    Scratch_Block scratch(app);
+    for (i64 linenum = line_start; linenum <= line_end; linenum += 1) {
+        String_Const_u8 line  = push_buffer_line(app, scratch, buffer, linenum);
+        u64 at_non_whitespace = string_find_first_non_whitespace(line);
+        
+        i32 remove_type = 0;
+        if ((at_non_whitespace > 0) && (at_non_whitespace < line.size)) {
+            u8 ch = line.str[at_non_whitespace-1];
+            if (ch == '\t') remove_type = -1;
+            else if (ch == ' ') { //TODO make this remove other type of whitespace (tab) and add correct amount of spaces to even it out...
+                for (i32 at = (i32)(at_non_whitespace-1); at >= 0; at -= 1) {
+                    if (line.str[at] == ' ') remove_type += 1;
+                    else break;
+                    
+                    if (remove_type == indent_width) break; //ate enough spaces to constitute a 'tab'
+                }
+            }
+        }
+        
+        if (remove_type) {
+            i64 line_start_pos = get_line_start_pos(app, buffer, linenum);
+            i64 end = line_start_pos + at_non_whitespace - 1;
+            Range_i64 range = {end, end + 1};
+            if (remove_type > 0) { //remove spaces by count
+                range.min -= (remove_type - 1);
+            }
+            buffer_replace_range(app, buffer, range, string_u8_empty);
+        }
+    }
+}
+
+CUSTOM_COMMAND_SIG(luis_remove_space)
+CUSTOM_DOC("remove space from line start") {
+    View_ID view = get_active_view(app, Access_ReadWriteVisible);
+    if (!view) return;
+
+    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+    i64 cursor_pos = view_get_cursor_pos(app, view);
+    i64 mark_pos   = view_get_mark_pos(app, view);
+    
+    i64 min = cursor_pos;
+    i64 max = mark_pos;
+    if (min > max) SWAP(min, max);
+    
+    i64 line_start = get_line_number_from_pos(app, view_get_buffer(app, view, Access_Always), min);
+    i64 line_end   = get_line_number_from_pos(app, view_get_buffer(app, view, Access_Always), max);
+    
+    i32 indent_width     = (i32)def_get_config_u64(app, vars_save_string_lit("indent_width"));
+    
+    Scratch_Block scratch(app);
+    for (i64 linenum = line_start; linenum <= line_end; linenum += 1) {
+        String_Const_u8 line  = push_buffer_line(app, scratch, buffer, linenum);
+        u64 at_non_whitespace = string_find_first_non_whitespace(line);
+        
+        i32 num_chars_to_remove = 0;
+        i32 num_spaces_to_add = 0;
+        if ((at_non_whitespace > 0) && (at_non_whitespace < line.size)) {
+            u8 ch = line.str[at_non_whitespace-1];
+            if (ch == '\t') {
+                num_chars_to_remove = 1;
+                num_spaces_to_add = Max(0, indent_width-1);
+            } else if (ch == ' ') { 
+                num_chars_to_remove = 1;
+            }
+        }
+        
+        if (num_chars_to_remove > 0) {
+            i64 line_start_pos = get_line_start_pos(app, buffer, linenum);
+            i64 end = line_start_pos + at_non_whitespace - 1;
+            Range_i64 range;
+            range.min = end - (num_chars_to_remove - 1);
+            range.max = end + 1;
+            
+            String_Const_u8 insert = string_u8_empty;
+            if (num_spaces_to_add > 0) {
+                static u8 spaces[] = "                                                                         ";
+                insert.str = spaces;
+                insert.size = Min(num_spaces_to_add, ArrayCount(spaces)-1);    
+            }
+            
+            buffer_replace_range(app, buffer, range, insert);
+        }
+    }
 }
 
 CUSTOM_COMMAND_SIG(luis_select_line)
@@ -187,9 +341,9 @@ luis_select_scope(Application_Links *app, View_ID view, Range_i64 range){
     no_mark_snap_to_cursor(app, view);
 }
 
+#if 0
 CUSTOM_COMMAND_SIG(luis_select_surrounding_scope)
-CUSTOM_DOC("select surrounding scope")
-{
+CUSTOM_DOC("select surrounding scope") {
     View_ID view = get_active_view(app, Access_ReadVisible);
     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
     i64 pos = view_get_cursor_pos(app, view);
@@ -198,6 +352,87 @@ CUSTOM_DOC("select surrounding scope")
         luis_select_scope(app, view, range);
     }
 }
+#else
+//NOTE this version joins preexisting selection with surrounding scope
+CUSTOM_COMMAND_SIG(luis_select_surrounding_scope)
+CUSTOM_DOC("select surrounding scope") {
+    View_ID view = get_active_view(app, Access_ReadVisible);
+    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+    i64 cursor_pos = view_get_cursor_pos(app, view);
+    i64 mark_pos   = view_get_mark_pos(app, view);
+    Range_i64 range;
+    if (find_surrounding_nest(app, buffer, cursor_pos, FindNest_Scope, &range)) {
+        i64 min = Min(range.min, Min(cursor_pos, mark_pos));
+        i64 max = Max(range.max, Max(cursor_pos, mark_pos));
+        
+        i64 next_cursor_pos = min;
+        i64 next_mark_pos   = max;
+        if (cursor_pos > mark_pos) {
+            SWAP(next_cursor_pos, next_mark_pos);
+        }
+        
+        view_set_cursor_and_preferred_x(app, view, seek_pos(next_cursor_pos));
+        luis_set_mark(app, view, next_mark_pos);
+        view_look_at_region(app, view, next_cursor_pos, next_mark_pos);
+        no_mark_snap_to_cursor(app, view);
+    }
+}
+#endif
+
+CUSTOM_COMMAND_SIG(luis_view_peek_as_split_window)
+CUSTOM_DOC("view peek buffer in split window") {
+    View_ID view = get_active_view(app, Access_Always);
+    View_ID peek = 0;
+    if (luis_view_has_flags(app, view, VIEW_IS_PEEK_WINDOW)) {
+        peek = view;  
+        view = luis_get_other_child_view(app, peek);
+    } else {
+        View_ID bro_view = luis_get_other_child_view(app, view);
+        if(bro_view && luis_view_has_flags(app, bro_view, VIEW_IS_PEEK_WINDOW)) {
+            peek = bro_view;    
+        }
+    }
+    
+    if (view && peek) {
+        Assert (view != peek);
+        i64 peek_cursor_pos = view_get_cursor_pos(app, peek);
+        Buffer_Scroll peek_scroll = view_get_buffer_scroll(app, peek);
+        Buffer_ID peek_buffer = view_get_buffer(app, peek, Access_Always);
+        
+        
+        Panel_ID view_panel   = view_get_panel(app, view);
+        Panel_ID parent_panel = panel_get_parent(app, view_panel);
+        Panel_ID uncle_panel  = get_sibling_panel(app, parent_panel);
+        
+        View_ID target_view = 0;
+        if (uncle_panel) {
+            if (panel_is_leaf(app, uncle_panel)) {
+                target_view = panel_get_view(app, uncle_panel, Access_Always);    
+            } else {
+                Panel_ID panel_id = panel_get_child(app, uncle_panel, Side_Min);
+                target_view = panel_get_view(app, panel_id, Access_Always);
+            }
+        } else {
+            //target_view = open_view(app, view, ViewSplit_Right); //causes crash
+            if (panel_split(app, parent_panel, Dimension_X)) {
+                Panel_ID new_panel_id = panel_get_child(app, parent_panel, Side_Max);
+                target_view = panel_get_view(app, new_panel_id, Access_Always);
+            }
+            
+        }
+        
+        if (target_view) {
+            view_close(app, peek); //doing this before causes assert to fail in os_thread_wrapper() call when trying to execute a coroutine
+            
+            view_set_buffer(app, target_view, peek_buffer, 0);
+            view_set_active(app, target_view);
+            view_set_cursor_and_preferred_x(app, target_view, seek_pos(peek_cursor_pos));
+            view_set_buffer_scroll(app, target_view, peek_scroll, SetBufferScroll_NoCursorChange);    
+        }
+    }
+}
+
+
 
 CUSTOM_COMMAND_SIG(luis_select_surrounding_scope_maximal)
 CUSTOM_DOC("select surrounding scope")
@@ -468,10 +703,7 @@ CUSTOM_DOC("build")
     if(!build_view)
         build_view = luis_get_or_split_peek_window(app, view, ViewSplit_Bottom);
     
-    if(build_view)
-    {
-        
-        
+    if(build_view) {
         standard_search_and_build(app, build_view, buffer);
         set_fancy_compilation_buffer_font(app);
         
@@ -594,15 +826,43 @@ CUSTOM_DOC("Show code nests for this buffer") {
     }
 }
 
-
+internal void
+vim_navigate_and_peek_code_index_entry(Application_Links *app, View_ID view, Lister *lister, i32 delta) {
+    //lister__navigate__default
+    i32 new_index = lister->item_index + delta;
+    if (new_index < 0 && lister->item_index == 0){
+        lister->item_index = lister->filtered.count - 1;
+    } else if (new_index >= lister->filtered.count &&
+             lister->item_index == lister->filtered.count - 1) {
+        lister->item_index = 0;
+    } else {
+        lister->item_index = clamp(0, new_index, lister->filtered.count - 1);
+    }
+    lister->set_vertical_focus_to_item = true;
+    lister_update_selection_values(lister);
+    
+    
+    if (in_range(0, lister->raw_item_index, lister->options.count)) {
+        Code_Index_Note *note = (Code_Index_Note *)lister_get_user_data(lister, lister->raw_item_index);
+        Set_Buffer_Flag flags = SetBuffer_KeepOriginalGUI;
+        view_set_buffer(app, view, note->file->buffer, flags);
+        
+        Buffer_Seek seek = seek_pos(note->pos.first);
+        view_set_cursor_and_preferred_x(app, view, seek);
+        view_set_mark(app, view, seek);
+        center_view(app, view, 0.1f);
+    }
+    
+}
 
 CUSTOM_COMMAND_SIG(luis_list_notes_this_buffer)
-CUSTOM_DOC("Show code indexes for buffer")
-{
+CUSTOM_DOC("Show code indexes for buffer") {
     Scratch_Block scratch(app);
     Lister_Block lister(app, scratch);
     lister_set_query(lister, "Code Index:");
-    lister_set_default_handlers(lister);
+    //lister_set_default_handlers(lister);
+    vim_lister_set_default_handlers(lister);
+    lister.lister.current->handlers.navigate = &vim_navigate_and_peek_code_index_entry;
     
     code_index_lock();
     /*for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
@@ -622,49 +882,37 @@ CUSTOM_DOC("Show code indexes for buffer")
                 note->note_kind == CodeIndexNote_Type_Definition     ||
                 note->note_kind == CodeIndexNote_Macro)
             {
-                //Lister_Prealloced_String status = {};
-                Lister_Prealloced_String search_string;
-                if(note->note_kind == CodeIndexNote_Function)
-                    search_string = lister_prealloced(push_stringf(lister.lister.current->arena, "%.*s()", string_expand(note->text)));
-                else if(note->note_kind == CodeIndexNote_Macro)
-                    search_string = lister_prealloced(push_stringf(lister.lister.current->arena, "# %.*s", string_expand(note->text)));
-                else {
-                    if (note->parent && note->parent->text.size > 0) { //big list of parent::child::child2::child3 stuff
-                        Scratch_Block temp(app, scratch);
-                        
-                        String_u8 string = string_u8_push(temp, 512);
-                        
-                        i32  parent_count = 0;
-                        i32  max_parent_count = 12;
-                        Code_Index_Nest **parents = push_array_zero(temp, Code_Index_Nest *, max_parent_count);
-                        
-                        if (parents) for (Code_Index_Nest *parent = note->parent; parent && parent->text.size > 0; parent = parent->parent) {
-                            if (parent_count < max_parent_count) {
-                                parents[parent_count++] = parent;
-                            }
-                            else break;
-                        }
-                        
-                        for (i32 i = parent_count - 1; i >= 0; i -= 1) {
-                            Code_Index_Nest *nest = parents[i];
-                            string_append(&string, nest->text);
-                            string_append(&string, SCu8("::"));
-                        }
-                        string_append(&string, note->text);
-                        
-                        
-                        search_string = lister_prealloced(push_string_copy(lister.lister.current->arena, SCu8(string)));
-                        /*
-                        search_string = lister_prealloced(push_stringf(lister.lister.current->arena, "%.*s::%.*s",
-                                                                       string_expand(note->parent->text),
-                                                                       string_expand(note->text))); */
-                    } 
-                    else { //fast path for top level stuff
-                        search_string = lister_prealloced(push_string_copy(lister.lister.current->arena, note->text));    
-                    }
+                Scratch_Block temp(app, scratch);
+                String_u8 string = string_u8_push(temp, 512);
+                
+                if (note->note_kind == CodeIndexNote_Function_Definition) {
+                    string_append(&string, SCu8("() "));    
+                } else if(note->note_kind == CodeIndexNote_Macro) {
+                    string_append(&string, SCu8("# "));    
+                } else {
+                    string_append(&string, SCu8("\"\" "));
                 }
                 
+                i32  parent_count = 0;
+                i32  max_parent_count = 12;
+                Code_Index_Nest **parents = push_array_zero(temp, Code_Index_Nest *, max_parent_count);
                 
+                if (parents) for (Code_Index_Nest *parent = note->parent; parent && parent->text.size > 0; parent = parent->parent) {
+                    if (parent_count < max_parent_count) {
+                        parents[parent_count++] = parent;
+                    }
+                    else break;
+                }
+                
+                for (i32 i = parent_count - 1; i >= 0; i -= 1) {
+                    Code_Index_Nest *nest = parents[i];
+                    string_append(&string, nest->text);
+                    string_append(&string, SCu8("::"));
+                }
+                
+                //Lister_Prealloced_String status = {};
+                string_append(&string, note->text);
+                Lister_Prealloced_String search_string = lister_prealloced(push_string_copy(lister.lister.current->arena, SCu8(string)));
                 lister_add_item(lister, search_string, status, (void*)note, 0);
             }
             
@@ -677,7 +925,7 @@ CUSTOM_DOC("Show code indexes for buffer")
     
     
     //Tiny_Jump result = {};
-    Lister_Result l_result = run_lister(app, lister);
+    Lister_Result l_result = vim_run_lister(app, lister);
     if (!l_result.canceled && l_result.user_data != 0){
         //block_copy_struct(&result, (Tiny_Jump*)l_result.user_data);
         
@@ -686,6 +934,97 @@ CUSTOM_DOC("Show code indexes for buffer")
         //i64 init_pos = view_get_cursor_pos(app, view);
         
         //view_set_current_buffer_location(app, view, init_buffer, init_pos);
+        Code_Index_Note *note = (Code_Index_Note *)l_result.user_data;
+        view_set_buffer(app, view, note->file->buffer, 0);
+        view_set_cursor_and_preferred_x(app, view, seek_pos(note->pos.first));
+        //luis_center_view_top(app);
+    }
+    
+    //if (result.buffer != 0){
+        //View_ID view = get_this_ctx_view(app, Access_Always);
+        //point_stack_push_view_cursor(app, view);
+        //jump_to_location(app, view, result.buffer, result.pos);
+    //}
+}
+
+
+
+CUSTOM_COMMAND_SIG(luis_list_notes_all_buffers)
+CUSTOM_DOC("Show code indexes for all buffer") {
+    Scratch_Block scratch(app);
+    Lister_Block lister(app, scratch);
+    lister_set_query(lister, "Code Index:");
+    //lister_set_default_handlers(lister);
+    vim_lister_set_default_handlers(lister);
+    lister.lister.current->handlers.navigate = &vim_navigate_and_peek_code_index_entry;
+    
+    code_index_lock();
+    for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always); buffer; buffer = get_buffer_next(app, buffer, Access_Always)) {  
+        Code_Index_File *file = code_index_get_file(buffer);
+        if(!file) continue; 
+        
+        Lister_Prealloced_String status  = lister_prealloced(push_buffer_base_name(app, lister.lister.current->arena, buffer));
+        for(i32 note_index = 0; note_index < file->note_array.count; note_index += 1) {
+            Code_Index_Note *note = file->note_array.ptrs[note_index];
+            
+            if (note->note_kind == CodeIndexNote_Function_Definition ||
+                note->note_kind == CodeIndexNote_Type_Definition     ||
+                note->note_kind == CodeIndexNote_Macro)
+            {
+                Scratch_Block temp(app, scratch);
+                String_u8 string = string_u8_push(temp, 512);
+                
+                if (note->note_kind == CodeIndexNote_Function_Definition) {
+                    string_append(&string, SCu8("() "));    
+                } else if(note->note_kind == CodeIndexNote_Macro) {
+                    string_append(&string, SCu8("## "));    
+                } else {
+                    string_append(&string, SCu8("<> "));
+                }
+                
+                i32  parent_count = 0;
+                i32  max_parent_count = 12;
+                Code_Index_Nest **parents = push_array_zero(temp, Code_Index_Nest *, max_parent_count);
+                
+                if (parents) for (Code_Index_Nest *parent = note->parent; parent && parent->text.size > 0; parent = parent->parent) {
+                    if (parent_count < max_parent_count) {
+                        parents[parent_count++] = parent;
+                    }
+                    else break;
+                }
+                
+                for (i32 i = parent_count - 1; i >= 0; i -= 1) {
+                    Code_Index_Nest *nest = parents[i];
+                    string_append(&string, nest->text);
+                    string_append(&string, SCu8("::"));
+                }
+                
+                //Lister_Prealloced_String status = {};
+                string_append(&string, note->text);
+                Lister_Prealloced_String search_string = lister_prealloced(push_string_copy(lister.lister.current->arena, SCu8(string)));
+                lister_add_item(lister, search_string, status, (void*)note, 0);
+            }
+            
+            //if (note->nest) {
+            
+            //}
+        }
+    }
+    code_index_unlock();
+    
+    
+    //Tiny_Jump result = {};
+    //Lister_Result l_result = run_lister(app, lister);
+    Lister_Result l_result = vim_run_lister(app, lister);
+    if (!l_result.canceled && l_result.user_data != 0){
+        //block_copy_struct(&result, (Tiny_Jump*)l_result.user_data);
+        
+        //View_ID view = get_active_view(app, Access_Always);
+        //Buffer_ID init_buffer = view_get_buffer(app, view, Access_Always);
+        //i64 init_pos = view_get_cursor_pos(app, view);
+        
+        //view_set_current_buffer_location(app, view, init_buffer, init_pos);
+        View_ID view = get_active_view(app, Access_Always);
         Code_Index_Note *note = (Code_Index_Note *)l_result.user_data;
         view_set_buffer(app, view, note->file->buffer, 0);
         view_set_cursor_and_preferred_x(app, view, seek_pos(note->pos.first));
@@ -1060,6 +1399,8 @@ CUSTOM_DOC("prev code index") {
         luis_center_view_top(app);
     }
 } 
+
+
 
 
 internal void

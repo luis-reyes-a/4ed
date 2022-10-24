@@ -4530,7 +4530,7 @@ string_remove_front_folder_of_path(String_Const_u8 str){
     return(str);
 }
 function String_Const_u8
-string_front_folder_of_path(String_Const_u8 str){
+string_front_folder_of_path(String_Const_u8 str) {
     i64 slash_pos = string_find_last_slash(string_chop(str, 1));
     if (slash_pos >= 0){
         str = string_skip(str, slash_pos + 1);

@@ -45,11 +45,23 @@ CUSTOM_DOC("Input consumption loop for default view behavior")
     Managed_Scope scope = view_get_managed_scope(app, view);
     //View_ID active_view = get_active_view(app, Access_Always);
     
-    for (;;){
+    for (;;) {
         // NOTE(allen): Get input
         User_Input input = get_next_input(app, EventPropertyGroup_Any, 0);
         if (input.abort){
             break;
+        }
+        
+        if (input.event.kind == InputEventKind_TextInsert ||
+            input.event.kind == InputEventKind_KeyStroke) {
+            system_show_mouse_cursor(MouseCursorShow_Never);
+            //suppress_mouse(app);
+        } else if (input.event.kind == InputEventKind_MouseMove ||
+                   input.event.kind == InputEventKind_MouseWheel || 
+                   input.event.kind == InputEventKind_MouseButton ||
+                   input.event.kind == InputEventKind_MouseButtonRelease) {
+            //allow_mouse(app);
+            system_show_mouse_cursor(MouseCursorShow_Always);
         }
         
         ProfileScopeNamed(app, "before view input", view_input_profile);
@@ -180,9 +192,8 @@ CUSTOM_DOC("Input consumption loop for default view behavior")
                         luis_view_clear_flags(app, view, VIEW_NOTEPAD_MODE_MARK_SET);
                         snap_mark_to_cursor = true;
                     }   
-                }
-                if (snap_mark_to_cursor)
-                {
+                } 
+                if (snap_mark_to_cursor) {
                     i64 pos = view_get_cursor_pos(app, view);
                     view_set_mark(app, view, seek_pos(pos));
                 }
@@ -594,6 +605,7 @@ luis_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id,
         //Scratch_Block scratch(app);
         
         b32 ate_assert_keyword = false;
+        i32 assert_balance_to_end_on = 0;
         i32 paren_balance = 0;
         {
             Range_i64 range = {visible_range.min};
@@ -617,6 +629,7 @@ luis_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id,
                         string_match(token_string, str8_lit("if_assert")) ||
                         string_match(token_string, str8_lit("defer_assert"))) {
                         ate_assert_keyword = true;
+                        assert_balance_to_end_on = 0;
                     }
                 } 
             }
@@ -634,31 +647,42 @@ luis_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id,
                 Token_Visual_Properties prop = get_token_visual_properties(app, buffer, &it, token, token_string);
                 
                 #if 1 //make words inside parents fade out a bit (make ones inside assert macros even more faded out)
-                if (token->kind == TokenBaseKind_Identifier && 
-                    (string_match(token_string, str8_lit("assert")) ||
-                     string_match(token_string, str8_lit("if_assert")) ||
-                     string_match(token_string, str8_lit("defer_assert")))) {
-                    ate_assert_keyword = true;
-                } 
-                
-                if (token->kind == TokenBaseKind_ParentheticalOpen) {
-                    paren_balance += 1;    
-                } else if (token->kind == TokenBaseKind_ParentheticalClose) {
-                    paren_balance -= 1;
-                    
-                    if (paren_balance == 0) ate_assert_keyword = false;
-                }
-                
-                if (paren_balance > 0) {
-                    //NOTE we do this check to avoid fading away the first matching paren
-                    if (!(paren_balance == 1 && token->kind == TokenBaseKind_ParentheticalOpen)) {
-                        Vec4_f32 color_v4 = unpack_color(prop.color);
-                        f32 scale = ate_assert_keyword ? 0.4f : 0.6f;
-                        color_v4.a *= scale;
-                        prop.color = pack_color(color_v4);    
+                b32 fade_tokens_inside_parens  = def_get_config_b32(vars_save_string_lit("luis_fade_tokens_inside_parens"));
+                if (fade_tokens_inside_parens) {
+                    if (token->kind == TokenBaseKind_Identifier) {
+                        if (!ate_assert_keyword &&
+                            string_match(token_string, str8_lit("assert")) ||
+                            string_match(token_string, str8_lit("if_assert")) ||
+                            string_match(token_string, str8_lit("defer_assert"))) {
+                            ate_assert_keyword = true;
+                            assert_balance_to_end_on = paren_balance;
+                        }
+                    } else if (token->kind == TokenBaseKind_ParentheticalOpen) {
+                        paren_balance += 1;    
+                    } else if (token->kind == TokenBaseKind_ParentheticalClose) {
+                        paren_balance -= 1;
                         
+                        if (ate_assert_keyword) {
+                            if (paren_balance == assert_balance_to_end_on) {
+                                ate_assert_keyword = false;
+                            }    
+                        }
+                    //if (paren_balance == 0) ate_assert_keyword = false;
                     }
                     
+                    if (paren_balance > 0) {
+                    //NOTE we do this check to avoid fading away the first matching paren
+                        if (!(paren_balance == 1 && token->kind == TokenBaseKind_ParentheticalOpen)) {
+                            Vec4_f32 color_v4 = unpack_color(prop.color);
+                            f32 scale = 0.6f;
+                            if (ate_assert_keyword && (paren_balance > assert_balance_to_end_on)) scale = 0.4f;
+                        //f32 scale = ate_assert_keyword ? 0.4f : 0.6f;
+                            color_v4.a *= scale;
+                            prop.color = pack_color(color_v4);    
+                            
+                        }
+                        
+                    }    
                 }
                 #endif //end assert test 
                     
@@ -807,6 +831,8 @@ luis_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id,
                 draw_character_block(app, text_layout_id, mark_pos, cursor_roundness, mark_color);
                 draw_character_block(app, text_layout_id, cursor_pos, cursor_roundness, cursor_color);
                 paint_text_color_pos(app, text_layout_id, cursor_pos,
+                    fcolor_id(defcolor_at_cursor));
+                paint_text_color_pos(app, text_layout_id, mark_pos,
                     fcolor_id(defcolor_at_cursor));
                 
                 

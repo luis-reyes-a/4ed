@@ -785,6 +785,9 @@ lister__write_string__default(Application_Links *app){
         if (string.str != 0 && string.size > 0){
             lister_append_text_field(lister, string);
             lister_append_key(lister, string);
+            #if 0
+            
+            #endif
             lister->item_index = 0;
             lister_zero_scroll(lister);
             lister_update_filtered_list(app, lister);

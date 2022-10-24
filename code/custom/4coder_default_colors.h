@@ -7,6 +7,10 @@
 #if !defined(FCODER_DEFAULT_COLORS_H)
 #define FCODER_DEFAULT_COLORS_H
 
+#if 1 //NOTE(luis) added this
+CUSTOM_ID(colors, defcolor_bar_active);
+#endif
+
 CUSTOM_ID(colors, defcolor_bar);
 CUSTOM_ID(colors, defcolor_base);
 CUSTOM_ID(colors, defcolor_pop1);

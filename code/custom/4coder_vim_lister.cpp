@@ -645,9 +645,21 @@ vim_run_lister(Application_Links *app, Lister *lister){
             //NOTE(luis) setting handling to false will create a textinput event next iteration
             case KeyCode_Comma: { //NOTE(luis) added this
                 if (has_modifier(&in, KeyCode_Control)) {
+                    #if 0
                     string_append(&lister->text_field, SCu8("_"));
+                    #else
+                    String_Const_u8 string = SCu8("_");
+                    lister_append_text_field(lister, string);
+                    string_append(&minibar_string, string);
+                    lister->item_index = 0;
+                    lister_zero_scroll(lister);
+                    lister_update_filtered_list(app, lister);
+                    handled = true;
+                    #endif
+                    
+                } else {
+                    handled = false;    
                 }
-                else handled = false;
             } break;
             
             case KeyCode_Period: { //NOTE(luis) added this

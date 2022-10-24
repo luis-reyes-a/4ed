@@ -69,9 +69,37 @@ print_all_matches_all_buffers(Application_Links *app, String_Const_u8 pattern, S
     print_all_matches_all_buffers(app, array, must_have_flags, must_not_have_flags, out_buffer_id);
 }
 
+internal View_ID
+luis_get_or_split_peek_window(Application_Links *app, View_ID view, View_Split_Position split_kind);
+
+//NOTE(luis) added this
+function Buffer_ID
+create_or_switch_to_buffer_and_clear_by_name__peek_view(Application_Links *app, String_Const_u8 name_string) {
+    View_ID active_view = get_active_view(app, Access_Always);
+    Buffer_ID search_buffer = get_buffer_by_name(app, name_string, Access_Always);
+    if (!search_buffer) {
+        search_buffer = create_buffer(app, name_string, BufferCreate_AlwaysNew);
+    }
+    
+    buffer_set_setting(app, search_buffer, BufferSetting_Unimportant, true);
+    buffer_set_setting(app, search_buffer, BufferSetting_ReadOnly, true);
+    //buffer_set_setting(app, search_buffer, BufferSetting_WrapLine, false);
+    View_ID target_view = luis_get_or_split_peek_window(app, active_view, ViewSplit_Bottom);
+    if (target_view) {
+        view_set_buffer(app, target_view, search_buffer, 0);
+        view_set_active(app, active_view); //split window will set it as active
+        
+        clear_buffer(app, search_buffer);
+        buffer_send_end_signal(app, search_buffer);
+    }
+    
+    return search_buffer;
+}
+
 internal void
 print_all_matches_all_buffers_to_search(Application_Links *app, String_Const_u8_Array match_patterns, String_Match_Flag must_have_flags, String_Match_Flag must_not_have_flags, View_ID default_target_view){
-    Buffer_ID search_buffer = create_or_switch_to_buffer_and_clear_by_name(app, search_name, default_target_view);
+    //Buffer_ID search_buffer = create_or_switch_to_buffer_and_clear_by_name(app, search_name, default_target_view);
+    Buffer_ID search_buffer = create_or_switch_to_buffer_and_clear_by_name__peek_view(app, search_name);
     print_all_matches_all_buffers(app, match_patterns, must_have_flags, must_not_have_flags, search_buffer);
 }
 

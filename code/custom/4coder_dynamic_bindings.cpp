@@ -5,7 +5,7 @@
 // TOP
 
 function Key_Code
-dynamic_binding_key_code_from_string(String_Const_u8 key_string){
+dynamic_binding_key_code_from_string(String_Const_u8 key_string) {
     Key_Code result = 0;
     for (i32 i = 1; i < KeyCode_COUNT; i += 1){
         String_Const_u8 str = SCu8(key_code_name[i]);

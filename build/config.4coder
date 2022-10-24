@@ -38,7 +38,7 @@ cursor_roundness = 45;
 mark_thickness = 3;
 
 // Theme
-default_theme_name = "theme-material_green";
+default_theme_name = "theme-10x";
 
 // lister_roundess is a value [0,50] setting the radius of
 // the lister items' roundness as a percentage of their height
@@ -90,4 +90,6 @@ default_compiler_bat = "cl";
 default_flags_bat = "-FC -GR- -EHa- -nologo -Zi";
 default_compiler_sh = "g++";
 default_flags_sh  = "-g";
+
+luis_fade_tokens_inside_parens = false;
 

@@ -313,9 +313,18 @@ function void
 draw_file_bar(Application_Links *app, View_ID view_id, Buffer_ID buffer, Face_ID face_id, Rect_f32 bar){
     Scratch_Block scratch(app);
     
+    #if 1 //NOTE(luis) changed this
+    FColor filebar_color = (view_id == get_active_view(app, Access_Always)) ? fcolor_id(defcolor_bar_active) : fcolor_id(defcolor_bar); 
+    draw_rectangle_fcolor(app, bar, 0.f, filebar_color);
+    #else
     draw_rectangle_fcolor(app, bar, 0.f, fcolor_id(defcolor_bar));
+    #endif
     
+    #if 0 //NOTE(luis) changed this
+    FColor base_color = (view_id == get_active_view(app, Access_Always)) ? fcolor_id(defcolor_bar_active) : fcolor_id(defcolor_base); 
+    #else
     FColor base_color = fcolor_id(defcolor_base);
+    #endif
     FColor pop2_color = fcolor_id(defcolor_pop2);
     
     i64 cursor_position = view_get_cursor_pos(app, view_id);

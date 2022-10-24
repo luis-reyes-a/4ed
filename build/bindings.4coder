@@ -101,6 +101,9 @@ keys_file = {
     { "paste_and_indent",            "V", "Alt" },
 	{ "redo",                        "U", "Alt" },
     { "undo",                        "U", "Control" },
+
+	{ "luis_remove_tab",               "LeftBracket",  "Control" },
+	{ "luis_add_tab",                  "RightBracket", "Control" },
     
     { "luis_center_view_top",               "L", "Control" },
     { "luis_adjust_horizontal_view_toggle", "L", "Alt" },
@@ -115,7 +118,9 @@ keys_file = {
 
 
 
-    //{ "luis_show_buffer_code_notes",      "N", "Control" },
+
+    { "luis_view_peek_as_split_window", "P", "Control" },
+    { "luis_list_notes_all_buffers",    "N", "Control" },
     //{ "luis_code_index_all_buffers",        "N", "Control" },
 	
     { "luis_return",  "Return"},
@@ -157,10 +162,10 @@ keys_modal = {
     //{ "move_right", "F", "Control" },
 	{ "move_left",  "Left"},
     { "move_right", "Right"},
-	{ "move_left",  "Q"},
-    { "move_right", "T"},
-	{ "move_left_alpha_numeric_boundary",  "W" },
-    { "move_right_alpha_numeric_boundary", "R" },
+	{ "move_left_alpha_numeric_boundary",  "Q"},
+    { "move_right_alpha_numeric_boundary", "T"},
+	{ "move_left",  "W" },
+    { "move_right", "R" },
 	 
 	{ "luis_home", "A" },
     { "luis_end",  "G" },
@@ -196,8 +201,10 @@ keys_modal = {
 	 //{ "move_prev_paren",                  "9" },
 	 //{ "move_next_paren",                  "0" },
     //{ "select_surrounding_paren",         "9", "Control" },
-	//{ "move_prev_brace",                  "LeftBracket" },
-	//{ "move_next_brace",                  "RightBracket" },
+	{ "luis_remove_tab",               "LeftBracket"  },
+	{ "luis_add_tab",                  "RightBracket" },
+	{ "luis_remove_space",               "LeftBracket",  "Control" },
+	{ "luis_add_space",                  "RightBracket", "Control" },
     { "luis_select_surrounding_scope",         "Quote" },
     { "luis_select_surrounding_scope_maximal", "Quote", "Control" },
 

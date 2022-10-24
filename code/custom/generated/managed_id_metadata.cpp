@@ -1,5 +1,6 @@
 function void
 initialize_managed_id_metadata(Application_Links *app){
+defcolor_bar_active = managed_id_declare(app, string_u8_litexpr("colors"), string_u8_litexpr("defcolor_bar_active"));
 defcolor_bar = managed_id_declare(app, string_u8_litexpr("colors"), string_u8_litexpr("defcolor_bar"));
 defcolor_base = managed_id_declare(app, string_u8_litexpr("colors"), string_u8_litexpr("defcolor_base"));
 defcolor_pop1 = managed_id_declare(app, string_u8_litexpr("colors"), string_u8_litexpr("defcolor_pop1"));

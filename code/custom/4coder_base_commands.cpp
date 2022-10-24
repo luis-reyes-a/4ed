@@ -5,6 +5,52 @@ moving the cursor, which work even without the default 4coder framework.
 
 // TOP
 
+
+//NOTE(luis) added this
+function void
+write_text_at(Application_Links *app, String_Const_u8 insert, i64 pos) {
+    ProfileScope(app, "write character");
+    if ((insert.str == 0) || (insert.size == 0)) return;
+    
+    View_ID view = get_active_view(app, Access_ReadWriteVisible);
+    if_view_has_highlighted_range_delete_range(app, view);
+    pos = view_get_character_legal_pos_from_pos(app, view, pos);
+    
+    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
+    
+    // NOTE(allen): consecutive inserts merge logic
+    History_Record_Index first_index = buffer_history_get_current_state_index(app, buffer);
+    b32 do_merge = false;
+    if (insert.str[0] != '\n'){
+        Record_Info record = get_single_record(app, buffer, first_index);
+        if (record.error == RecordError_NoError && record.kind == RecordKind_Single){
+            String_Const_u8 string = record.single_string_forward;
+            i32 last_end = (i32)(record.single_first + string.size);
+            if (last_end == pos && string.size > 0){
+                char c = string.str[string.size - 1];
+                if (c != '\n'){
+                    if (character_is_whitespace(insert.str[0]) &&
+                        character_is_whitespace(c)){
+                        do_merge = true;
+                    }
+                    else if (character_is_alpha_numeric(insert.str[0]) && character_is_alpha_numeric(c)){
+                        do_merge = true;
+                    }
+                }
+            }
+        }
+    }
+    
+    // NOTE(allen): perform the edit
+    buffer_replace_range(app, buffer, Ii64(pos), insert);
+    
+    // NOTE(allen): finish merging records if necessary
+    if (do_merge){
+        History_Record_Index last_index = buffer_history_get_current_state_index(app, buffer);
+        buffer_history_merge_record_range(app, buffer, first_index, last_index, RecordMergeFlag_StateInRange_MoveStateForward);
+    }
+}
+
 function void
 write_text(Application_Links *app, String_Const_u8 insert){
     ProfileScope(app, "write character");
