@@ -88,6 +88,9 @@ struct Lister{
     
     Basic_Scroll scroll;
     i32 visible_count;
+    #if 1 //NOTE(luis) added this
+    i32 vim_max_col_count;
+    #endif
     
     Lister_Result out;
 };

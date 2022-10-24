@@ -18,7 +18,7 @@ vim__fill_command_lister(Arena *arena, Lister *lister, i32 *command_ids, i32 com
 		for(Command_Trigger *node=triggers.first; node; node=node->next){
 			command_trigger_stringize(arena, &list, node);
 			if(node->next){
-				string_list_push(arena, &list, string_u8_litexpr(" "));
+				string_list_push(arena, &list, string_u8_litexpr(" ")); 
 			}
 		}
 

@@ -12,6 +12,7 @@ CUSTOM_DOC("Opens file explorer in hot directory") {
     if (hot.size == 0) {
         hot = push_hot_directory(app, scratch); //use current hot directory if looking at *scratch* for example
     }
+    
     #endif
     exec_system_command(app, 0, buffer_identifier(0), hot, string_u8_litexpr("explorer ."), 0);
     
@@ -34,8 +35,7 @@ CUSTOM_DOC("Toggles modal mode") {
 
 
 CUSTOM_COMMAND_SIG(luis_interactive_open_or_new)  
-CUSTOM_DOC("open in new in same tab") 
-{	
+CUSTOM_DOC("open in new in same tab") {	
     //my_interactive_open_or_new_internal(app, false);
 	View_ID view = get_active_view(app, Access_Always);
     
@@ -429,6 +429,33 @@ CUSTOM_DOC("view peek buffer in split window") {
             view_set_cursor_and_preferred_x(app, target_view, seek_pos(peek_cursor_pos));
             view_set_buffer_scroll(app, target_view, peek_scroll, SetBufferScroll_NoCursorChange);    
         }
+    }
+}
+
+CUSTOM_COMMAND_SIG(luis_view_peek_in_parent_window)
+CUSTOM_DOC("view peek buffer in split window") {
+    View_ID view = get_active_view(app, Access_Always);
+    View_ID peek = 0;
+    if (luis_view_has_flags(app, view, VIEW_IS_PEEK_WINDOW)) {
+        peek = view;  
+        view = luis_get_other_child_view(app, peek);
+    } else {
+        View_ID bro_view = luis_get_other_child_view(app, view);
+        if(bro_view && luis_view_has_flags(app, bro_view, VIEW_IS_PEEK_WINDOW)) {
+            peek = bro_view;    
+        }
+    }
+    
+    if (view && peek) {
+        i64 peek_cursor_pos = view_get_cursor_pos(app, peek);
+        Buffer_Scroll peek_scroll = view_get_buffer_scroll(app, peek);
+        Buffer_ID peek_buffer = view_get_buffer(app, peek, Access_Always);
+        view_close(app, peek); //doing this before causes assert to fail in os_thread_wrapper() call when trying to execute a coroutine
+        
+        view_set_buffer(app, view, peek_buffer, 0);
+        view_set_active(app, view);
+        view_set_cursor_and_preferred_x(app, view, seek_pos(peek_cursor_pos));
+        view_set_buffer_scroll(app, view, peek_scroll, SetBufferScroll_NoCursorChange);
     }
 }
 
@@ -1399,6 +1426,81 @@ CUSTOM_DOC("prev code index") {
         luis_center_view_top(app);
     }
 } 
+
+
+function void
+luis_vim__fill_string_match_commands(Arena *arena, Lister *lister, String_Const_u8 selection_word, String_Const_u8 cursor_word) {
+    
+    struct Command_And_Desc {
+        Custom_Command_Function *cmd;
+        String_Const_u8 desc;
+    };
+    
+    Command_And_Desc commands[] = {
+        { list_all_locations,                            SCu8("Exact string matches for...")},
+        { list_all_locations_case_insensitive,           SCu8("Ignore case string matches...")},
+        { list_all_substring_locations,                  SCu8("Exact substring matches for...")},
+        { list_all_substring_locations_case_insensitive, SCu8("Ignore case substring matches for...")},
+    };
+    
+    for (i32 i = 0; i < ArrayCount(commands); i += 1) {
+        Command_And_Desc *command = commands + i;
+        Lister_Prealloced_String status = {};
+        lister_add_item(lister, command->desc, status, (void *)command->cmd, 0);
+    }
+    
+    if (selection_word.str) {
+        Lister_Prealloced_String status = {};
+        String_Const_u8 exact_string  = push_u8_stringf(lister->arena, "Exact matches: \"%.*s\"", string_expand(selection_word));
+        String_Const_u8 ignore_string = push_u8_stringf(lister->arena, "Ignore case matches: \"%.*s\"", string_expand(selection_word));
+        
+        lister_add_item(lister, lister_prealloced(exact_string),  status, (void *)list_all_locations_of_selection, 0);
+        lister_add_item(lister, lister_prealloced(ignore_string), status, (void *)list_all_locations_of_selection_case_insensitive, 0);
+    }
+    
+    if (cursor_word.str) {
+        Lister_Prealloced_String status = {};
+        String_Const_u8 exact_string  = push_u8_stringf(lister->arena, "Exact matches: \"%.*s\"", string_expand(cursor_word));
+        String_Const_u8 ignore_string = push_u8_stringf(lister->arena, "Ignore case matches: \"%.*s\"", string_expand(cursor_word));
+        
+        lister_add_item(lister, lister_prealloced(exact_string),  status, (void *)list_all_locations_of_identifier, 0);
+        lister_add_item(lister, lister_prealloced(ignore_string), status, (void *)list_all_locations_of_identifier_case_insensitive, 0);
+    }
+}
+
+
+
+CUSTOM_UI_COMMAND_SIG(luis_vim_string_matches)
+CUSTOM_DOC("Enter Command Mode") {
+    defer { minibar_string.size = 0; };
+	View_ID view = get_this_ctx_view(app, Access_Always);
+	if (view == 0){ return; }
+    
+    
+	Scratch_Block scratch(app);
+    String_Const_u8 selection_word = push_view_range_string(app, scratch);
+    String_Const_u8 cursor_word = push_token_or_word_under_active_cursor(app, scratch);
+    //print_message(app, SCu8("Selection and cursor match results are...\n"));
+    //print_message(app, selection_word);
+    //print_message(app, SCu8("\n"));
+    //print_message(app, cursor_word);
+    //print_message(app, SCu8("\n")); 
+    
+	Lister_Block lister(app, scratch);
+	vim_lister_set_default_handlers(lister);
+	lister_set_query(lister, string_u8_litexpr("Command:"));
+	luis_vim__fill_string_match_commands(scratch, lister, selection_word, cursor_word);
+    
+    //minibar_string.size = 0;
+    //vim_reset_bottom_text();
+    //string_append(&vim_bot_text, string_u8_litexpr(":"));
+    lister.lister.current->vim_max_col_count = 2;
+	Lister_Result l_result = vim_run_lister(app, lister);
+    Custom_Command_Function *cmd = l_result.canceled ? 0 : (Custom_Command_Function *)l_result.user_data;
+    if (cmd) {
+        view_enqueue_command_function(app, view, cmd);
+    }
+}
 
 
 

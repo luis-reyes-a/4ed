@@ -77,6 +77,8 @@ function Lister_Prev_Current
 begin_lister(Application_Links *app, Arena *arena){
     Lister_Prev_Current result = {};
     Lister *lister = push_array_zero(arena, Lister, 1);
+    lister->vim_max_col_count = 16;
+    
     lister->arena = arena;
     lister->query = Su8(lister->query_space, 0, sizeof(lister->query_space));
     lister->text_field = Su8(lister->text_field_space, 0, sizeof(lister->text_field_space));

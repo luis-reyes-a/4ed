@@ -263,6 +263,10 @@ calc_col_row(Application_Links *app, Lister *lister){
 	i32 col_num = i32(dim.x/((max_name_size+7)*max_advance));
 	col_num = clamp(lister_range.min, col_num, lister_range.max);
     
+    i32 max_column_count = lister->vim_max_col_count;
+    if (max_column_count == 0) max_column_count = 16; 
+    col_num = Min(col_num, max_column_count);
+    
 	i32 max_row_num = 1 + lister->filtered.count/col_num;
 	i32 row_num = i32((dim.y*0.5f - 2.f*line_height)/block_height);
 	row_num = Min(row_num, max_row_num);

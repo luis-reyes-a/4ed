@@ -119,8 +119,11 @@ keys_file = {
 
 
 
-    { "luis_view_peek_as_split_window", "P", "Control" },
+    { "luis_view_peek_as_split_window",  "P", "Control" },
+    { "luis_view_peek_in_parent_window", "P", "Alt" },
+
     { "luis_list_notes_all_buffers",    "N", "Control" },
+    { "luis_vim_string_matches",         "M", "Control" },
     //{ "luis_code_index_all_buffers",        "N", "Control" },
 	
     { "luis_return",  "Return"},
