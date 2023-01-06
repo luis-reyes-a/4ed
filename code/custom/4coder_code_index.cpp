@@ -771,11 +771,16 @@ cpp_parse_function(Code_Index_File *index, Generic_Parse_State *state, Code_Inde
     generic_parse_inc(state);
     generic_parse_skip_soft_tokens(index, state);
     token = token_it_read(&state->it);
+    Token *args_start_token = token;
+    Token *last_paren_close = 0;
     
     i32 paren_balance = -1;
     while (token && token->kind != TokenBaseKind_EOF) {
         if      (token->kind == TokenBaseKind_ParentheticalOpen)  paren_balance -= 1;
-        else if (token->kind == TokenBaseKind_ParentheticalClose) paren_balance += 1;
+        else if (token->kind == TokenBaseKind_ParentheticalClose) {
+            last_paren_close = token;
+            paren_balance += 1;   
+        }
         
         generic_parse_inc(state);
         generic_parse_skip_soft_tokens(index, state);
@@ -791,6 +796,11 @@ cpp_parse_function(Code_Index_File *index, Generic_Parse_State *state, Code_Inde
         
         Code_Index_Note_Kind note_kind = (token->kind == TokenBaseKind_ScopeOpen) ? CodeIndexNote_Function_Definition : CodeIndexNote_Function;
         note = index_new_note(index, state, Ii64(identifier_token), note_kind, parent);
+        if (note && last_paren_close && args_start_token &&
+            last_paren_close->pos > args_start_token->pos) {
+            Range_i64 arg_range = Ii64(args_start_token->pos, last_paren_close->pos);
+            note->func_arg_string = push_string_copy(state->arena, string_substring(state->contents, arg_range));
+        }
         
         #if 1 
         if (note && token->kind == TokenBaseKind_ScopeOpen) {
@@ -798,6 +808,7 @@ cpp_parse_function(Code_Index_File *index, Generic_Parse_State *state, Code_Inde
             if (note->nest) {
                 note->nest->parent = parent;
                 note->nest->text = note->text; //TODO we probably just want to copy this. We don't know how this string is being used around the codebase 
+                
                 
                 note->nest->flags |= CODE_INDEX_NEST_IS_FUNCTION;
                 

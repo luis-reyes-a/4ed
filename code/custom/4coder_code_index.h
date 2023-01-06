@@ -71,6 +71,7 @@ struct Code_Index_Note {
     Code_Index_Note_Kind note_kind;
     Range_i64 pos;
     String_Const_u8 text;
+    String_Const_u8 func_arg_string; //NOTE (lui$) added this
     struct Code_Index_File *file;
     
     Range_i64 nest_range; //NOTE(luis) added this

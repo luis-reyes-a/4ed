@@ -49,6 +49,7 @@ keys_global = {
 	//{ "list_all_substring_locations",                      "F3" },
 	//{ "list_all_substring_locations_case_insensitive",     "F3", "Control"},
 
+    { "reopen",     "F4" },
     //{ "toggle_footer_panel",     "F4" },
     //{ "open_footer_panel_big",   "F4", "Control"},
 
@@ -80,8 +81,17 @@ keys_file = {
     //{ "move_right_alpha_numeric_boundary","Right", "Control" },
     { "luis_left_word",  "Left",  "Control" },
     { "luis_right_word", "Right", "Control" },
-    { "move_left_whitespace_boundary",    "Left",  "Shift" },
-    { "move_right_whitespace_boundary",   "Right", "Shift" },
+	{ "move_left_whitespace_boundary",  "Left",  "Alt" },
+    { "move_right_whitespace_boundary", "Right", "Alt" },
+	
+	//notepad mode stuff
+    { "move_left",    "Left",  "Shift" },
+    { "move_right",   "Right", "Shift" },
+	{ "luis_left_word",  "Left",  "Shift", "Control" },
+    { "luis_right_word", "Right", "Shift", "Control" },
+	{ "move_left_whitespace_boundary",  "Left",  "Shift", "Alt" },
+    { "move_right_whitespace_boundary", "Right", "Shift", "Alt" },
+
 
 
     { "delete_char",            "Delete" },
@@ -104,17 +114,20 @@ keys_file = {
 
 	{ "luis_remove_tab",               "LeftBracket",  "Control" },
 	{ "luis_add_tab",                  "RightBracket", "Control" },
+	
+	
     
     { "luis_center_view_top",               "L", "Control" },
-    { "luis_adjust_horizontal_view_toggle", "L", "Alt" },
+	{ "duplicate_line",                     "L", "Alt" },
+    { "luis_adjust_horizontal_view_toggle", "L", "Control", "Alt" },
     
     { "search_identifier",           "F", "Alt" },
 	{ "reverse_search_identifier",   "R", "Alt" },
 	 
     { "query_replace",               "Q", "Control" },
 	{ "query_replace_identifier",    "Q", "Alt" },
-    { "luis_matching_file_cpp_same_buffer",  "K", "Control" },
-    { "luis_matching_file_cpp",              "K", "Alt" },
+    //{ "luis_cut_line",   "K", "Control" },
+    //{ "luis_select_line","K", "Alt" },
 
 
 
@@ -122,7 +135,8 @@ keys_file = {
     { "luis_view_peek_as_split_window",  "P", "Control" },
     { "luis_view_peek_in_parent_window", "P", "Alt" },
 
-    { "luis_list_notes_all_buffers",    "N", "Control" },
+    { "luis_list_notes_all_buffers",     "N", "Control" },
+	{ "luis_list_functions_all_buffers", "N", "Alt"},
     { "luis_vim_string_matches",         "M", "Control" },
     //{ "luis_code_index_all_buffers",        "N", "Control" },
 	
@@ -141,7 +155,10 @@ keys_file = {
     
 	 { "goto_line",               "G", "Control" },
 
-	 { "comment_line_toggle",     "ForwardSlash", "Control"},
+	 { "comment_line_toggle",     "ForwardSlash",  "Control"},
+	 
+	{ "luis_matching_file_cpp_same_buffer",  "K", "Control" },
+    { "luis_matching_file_cpp",              "K", "Alt" },
 };
 
 //keys_code = {
@@ -194,7 +211,6 @@ keys_modal = {
     //{ "select_token_or_word", "J"},
     { "luis_select_line",          "K"},
     { "place_in_scope",       "I"},
-	 //{ "surround_in_parens",   "P"},
 
 
     { "luis_center_view_top",                 "L"},

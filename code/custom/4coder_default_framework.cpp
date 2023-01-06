@@ -588,7 +588,8 @@ setup_essential_mapping(Mapping *mapping, i64 global_id, i64 file_id, i64 code_i
     BindCore(default_try_exit, CoreCode_TryExit);
     BindCore(clipboard_record_clip, CoreCode_NewClipboardContents);
     BindMouseWheel(mouse_wheel_scroll);
-    BindMouseWheel(mouse_wheel_change_face_size, KeyCode_Control);
+    BindMouseWheel(luis_horizontal_mouse_wheel_scroll, KeyCode_Control); //NOTE luis added this
+    BindMouseWheel(mouse_wheel_change_face_size,       KeyCode_Shift);
     
     SelectMap(file_id);
     ParentMap(global_id);

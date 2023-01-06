@@ -14,7 +14,7 @@ CUSTOM_DOC("Opens file explorer in hot directory") {
     }
     
     #endif
-    exec_system_command(app, 0, buffer_identifier(0), hot, string_u8_litexpr("explorer ."), 0);
+    exec_system_command(app, 0, buffer_identifier(0), hot, string_u8_litexpr("explorer ."), 0); /////////////////////////////////////////////////////////////////////////////////////////
     
 }
 
@@ -49,8 +49,7 @@ CUSTOM_DOC("open in new in same tab") {
 }
 
 CUSTOM_COMMAND_SIG(luis_home)
-CUSTOM_DOC("go start of visual line")
-{
+CUSTOM_DOC("go start of visual line") {
     View_ID view = get_active_view(app, Access_Always);
     i64 linenum = get_line_number_from_pos(app, view_get_buffer(app, view, Access_Always), view_get_cursor_pos(app, view));
     Range_i64 range = get_visual_line_start_end_pos(app, view, linenum);
@@ -324,13 +323,26 @@ CUSTOM_DOC("remove space from line start") {
 }
 
 CUSTOM_COMMAND_SIG(luis_select_line)
-CUSTOM_DOC("go end of visual line")
-{
+CUSTOM_DOC("go end of visual line") {
     View_ID view = get_active_view(app, Access_Always);
     i64 linenum = get_line_number_from_pos(app, view_get_buffer(app, view, Access_Always), view_get_cursor_pos(app, view));
     Range_i64 range = get_visual_line_start_end_pos(app, view, linenum);
     luis_set_mark(app, view, range.min);
     view_set_cursor_and_preferred_x(app, view, seek_pos(range.max));
+}
+
+CUSTOM_COMMAND_SIG(luis_cut_line) 
+CUSTOM_DOC("Emacs-style kill line") {
+    View_ID view = get_active_view(app, Access_Always);
+    Buffer_ID buffer_id = view_get_buffer(app, view, Access_Always);
+    i64 pos     = view_get_cursor_pos(app, view);
+    i64 linenum = get_line_number_from_pos(app, buffer_id, pos);
+    i64 end     = get_line_end_pos(app, buffer_id, linenum);
+    
+    if (end > pos) {
+        view_set_mark(app, view, seek_pos(end));
+        cut(app);
+    }
 }
 
 function void
@@ -504,13 +516,15 @@ CUSTOM_DOC("Moves view horizontally to cursor x pos or back to leftmost of scree
 {
     View_ID view = get_active_view(app, Access_ReadVisible);
     Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
-    if (scroll.position.pixel_shift.x > -100 &&
-        scroll.position.pixel_shift.x < 100) //on left side of screen go to cursor
-    {
+    if (scroll.position.pixel_shift.x < 100) { //on left side of screen go to cursor
         i64 pos = view_get_cursor_pos(app, view);
+        
+         
         Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(pos));
-        Vec2_f32 p = view_relative_xy_of_pos(app, view, cursor.line, pos);
-        scroll.target.pixel_shift.x = clamp_bot(0.f, p.x - 8*30.f);
+        i64 left_target_pos = pos - clamp(0, (cursor.col-1), 6);
+        Vec2_f32 p = view_relative_xy_of_pos(app, view, cursor.line, left_target_pos);
+        //scroll.target.pixel_shift.x = clamp_bot(0.f, p.x - 8*30.f);
+        scroll.target.pixel_shift.x = p.x;
     }
     else //go back to leftmost of screen
     {
@@ -519,6 +533,20 @@ CUSTOM_DOC("Moves view horizontally to cursor x pos or back to leftmost of scree
     view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
     no_mark_snap_to_cursor(app, view);
     
+}
+
+CUSTOM_COMMAND_SIG(luis_horizontal_mouse_wheel_scroll)
+CUSTOM_DOC("Reads the scroll wheel value from the mouse state and scrolls accordingly.") {
+    View_ID view = get_active_view(app, Access_ReadVisible);
+    Mouse_State mouse = get_mouse_state(app);
+    if (mouse.wheel != 0){
+        Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
+        scroll.target = view_move_buffer_point(app, view, scroll.target, V2f32((f32)mouse.wheel, 0.f));
+        view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
+    }
+    if (mouse.l){
+        no_mark_snap_to_cursor(app, view);
+    }
 }
 
 
@@ -695,6 +723,8 @@ CUSTOM_DOC("If the current file is a *.cpp or *.h, attempts to open the correspo
         view_set_active(app, view);
     }
 }
+
+
 
 CUSTOM_COMMAND_SIG(luis_return)
 CUSTOM_DOC("If the buffer in the active view is writable, inserts a character, otherwise performs goto_jump_at_cursor.")
@@ -1035,6 +1065,84 @@ CUSTOM_DOC("Show code indexes for all buffer") {
             //if (note->nest) {
             
             //}
+        }
+    }
+    code_index_unlock();
+    
+    
+    //Tiny_Jump result = {};
+    //Lister_Result l_result = run_lister(app, lister);
+    Lister_Result l_result = vim_run_lister(app, lister);
+    if (!l_result.canceled && l_result.user_data != 0){
+        //block_copy_struct(&result, (Tiny_Jump*)l_result.user_data);
+        
+        //View_ID view = get_active_view(app, Access_Always);
+        //Buffer_ID init_buffer = view_get_buffer(app, view, Access_Always);
+        //i64 init_pos = view_get_cursor_pos(app, view);
+        
+        //view_set_current_buffer_location(app, view, init_buffer, init_pos);
+        View_ID view = get_active_view(app, Access_Always);
+        Code_Index_Note *note = (Code_Index_Note *)l_result.user_data;
+        view_set_buffer(app, view, note->file->buffer, 0);
+        view_set_cursor_and_preferred_x(app, view, seek_pos(note->pos.first));
+        //luis_center_view_top(app);
+    }
+    
+    //if (result.buffer != 0){
+        //View_ID view = get_this_ctx_view(app, Access_Always);
+        //point_stack_push_view_cursor(app, view);
+        //jump_to_location(app, view, result.buffer, result.pos);
+    //}
+}
+
+CUSTOM_COMMAND_SIG(luis_list_functions_all_buffers)
+CUSTOM_DOC("Show code indexes for all buffer") {
+    Scratch_Block scratch(app);
+    Lister_Block lister(app, scratch);
+    lister_set_query(lister, "Procedure:");
+    //lister_set_default_handlers(lister);
+    vim_lister_set_default_handlers(lister);
+    lister.lister.current->handlers.navigate = &vim_navigate_and_peek_code_index_entry;
+    
+    code_index_lock();
+    for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always); buffer; buffer = get_buffer_next(app, buffer, Access_Always)) {  
+        Code_Index_File *file = code_index_get_file(buffer);
+        if (!file) continue; 
+        
+        Lister_Prealloced_String status  = lister_prealloced(push_buffer_base_name(app, lister.lister.current->arena, buffer));
+        for(i32 note_index = 0; note_index < file->note_array.count; note_index += 1) {
+            Code_Index_Note *note = file->note_array.ptrs[note_index];
+            if (note->note_kind != CodeIndexNote_Function_Definition) continue;
+            
+            Scratch_Block temp(app, scratch);
+            String_u8 string = string_u8_push(temp, 512);
+            
+            i32  parent_count = 0;
+            i32  max_parent_count = 12;
+            Code_Index_Nest **parents = push_array_zero(temp, Code_Index_Nest *, max_parent_count);
+            
+            if (parents) for (Code_Index_Nest *parent = note->parent; parent && parent->text.size > 0; parent = parent->parent) {
+                if (parent_count < max_parent_count) {
+                    parents[parent_count++] = parent;
+                }
+                else break;
+            }
+            
+            for (i32 i = parent_count - 1; i >= 0; i -= 1) {
+                Code_Index_Nest *nest = parents[i];
+                string_append(&string, nest->text);
+                string_append(&string, SCu8("::"));
+            }
+            
+                //Lister_Prealloced_String status = {};
+            string_append(&string, note->text);
+            string_append(&string, SCu8("("));
+            if (note->func_arg_string.size > 0) {
+                string_append(&string, note->func_arg_string);
+            }
+            string_append(&string, SCu8(")"));
+            Lister_Prealloced_String search_string = lister_prealloced(push_string_copy(lister.lister.current->arena, SCu8(string)));
+            lister_add_item(lister, search_string, status, (void*)note, 0);
         }
     }
     code_index_unlock();
@@ -1451,8 +1559,8 @@ luis_vim__fill_string_match_commands(Arena *arena, Lister *lister, String_Const_
     
     if (selection_word.str) {
         Lister_Prealloced_String status = {};
-        String_Const_u8 exact_string  = push_u8_stringf(lister->arena, "Exact matches: \"%.*s\"", string_expand(selection_word));
-        String_Const_u8 ignore_string = push_u8_stringf(lister->arena, "Ignore case matches: \"%.*s\"", string_expand(selection_word));
+        String_Const_u8 exact_string  = push_u8_stringf(lister->arena, "Exact matches for \"%.*s\"", string_expand(selection_word));
+        String_Const_u8 ignore_string = push_u8_stringf(lister->arena, "Ignore case matches for \"%.*s\"", string_expand(selection_word));
         
         lister_add_item(lister, lister_prealloced(exact_string),  status, (void *)list_all_locations_of_selection, 0);
         lister_add_item(lister, lister_prealloced(ignore_string), status, (void *)list_all_locations_of_selection_case_insensitive, 0);
@@ -1460,8 +1568,8 @@ luis_vim__fill_string_match_commands(Arena *arena, Lister *lister, String_Const_
     
     if (cursor_word.str) {
         Lister_Prealloced_String status = {};
-        String_Const_u8 exact_string  = push_u8_stringf(lister->arena, "Exact matches: \"%.*s\"", string_expand(cursor_word));
-        String_Const_u8 ignore_string = push_u8_stringf(lister->arena, "Ignore case matches: \"%.*s\"", string_expand(cursor_word));
+        String_Const_u8 exact_string  = push_u8_stringf(lister->arena, "Exact matches for \"%.*s\"", string_expand(cursor_word));
+        String_Const_u8 ignore_string = push_u8_stringf(lister->arena, "Ignore case matches for \"%.*s\"", string_expand(cursor_word));
         
         lister_add_item(lister, lister_prealloced(exact_string),  status, (void *)list_all_locations_of_identifier, 0);
         lister_add_item(lister, lister_prealloced(ignore_string), status, (void *)list_all_locations_of_identifier_case_insensitive, 0);
@@ -1583,15 +1691,12 @@ luis_isearch(Application_Links *app, Scan_Direction start_scan, i64 first_pos, S
             }
             else if(code == KeyCode_Backspace)
             {
-                if(ctrl_down)
-                {
+                if (ctrl_down) {
                     if (bar.string.size > 0){
                         string_change = true;
                         bar.string.size = 0;
                     }
-                }
-                else
-                {
+                } else {
                     u64 old_bar_string_size = bar.string.size;
                     bar.string = backspace_utf8(bar.string);
                     string_change = (bar.string.size < old_bar_string_size);
@@ -1632,16 +1737,13 @@ luis_isearch(Application_Links *app, Scan_Direction start_scan, i64 first_pos, S
                         BAR_APPEND_STRING(SCu8("_"));
                     else if (binding.custom == luis_write_pointer_arrow)
                         BAR_APPEND_STRING(SCu8("->"));
-                    else if(binding.custom == word_complete)
-                    {
-                        if(bar.string.size == 0)
-                        {
+                    else if(binding.custom == word_complete) {
+                        if(bar.string.size == 0) {
                             change_scan = Scan_Forward;
                             do_scan_action = true;
                             
                             Token *token = get_token_from_pos(app, buffer, pos);
-                            if(token && token->size > 0 && token->kind == TokenBaseKind_Identifier)
-                            {
+                            if(token && (token->size > 0)) {
                                 Scratch_Block scratch(app);
                                 String_Const_u8 word = push_buffer_range(app, scratch, buffer, Ii64(token));
                                 bar.string.size = word.size;

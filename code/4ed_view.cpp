@@ -437,9 +437,11 @@ view_set_scroll(Thread_Context *tctx, Models *models, View *view, Buffer_Scroll 
     File_Edit_Positions edit_pos = view_get_edit_pos(view);
     file_edit_positions_set_scroll(&edit_pos, scroll);
     view_set_edit_pos(view, edit_pos);
+    #if 1 //NOTE luis added this
     if (view_move_cursor_to_view(tctx, models, view, edit_pos.scroll, &edit_pos.cursor_pos, view->preferred_x)){
         view_set_edit_pos(view, edit_pos);
     }
+    #endif
 }
 
 internal void

@@ -71,7 +71,7 @@ default_tab_width = 4;
 default_font_name = "consola.ttf";
 //default_font_name = "RobotoMono-Regular.ttf";
 
-default_font_size = 20;
+default_font_size = 22;
 default_font_hinting = false;
 
 // aa modes:

@@ -172,27 +172,32 @@ CUSTOM_DOC("Input consumption loop for default view behavior")
             
             View_ID current_active_view = get_active_view(app, Access_Always);
             
-            if (fcoder_mode == FCoderMode_NotepadLike && (view == current_active_view))
-            {
+            if (fcoder_mode == FCoderMode_NotepadLike && (view == current_active_view)) {
+                b32 should_check_snap_mark_to_cursor = luis_view_has_flags(app, view, VIEW_NOTEPAD_MODE_MARK_SET);
+                if (!should_check_snap_mark_to_cursor) {
+                    Input_Modifier_Set mods = system_get_keyboard_modifiers(scratch);
+                    should_check_snap_mark_to_cursor = has_modifier(&mods, KeyCode_Shift);
+                }
+                
                 b32 snap_mark_to_cursor = true;
-                if (luis_view_has_flags(app, view, VIEW_NOTEPAD_MODE_MARK_SET))
-                {
+                if (should_check_snap_mark_to_cursor) {
                     snap_mark_to_cursor = false;
                     Custom_Command_Function *cmd = map_result.command;
                     //TODO it would be really neat if we could supply meta-data to the custom command functions to say stuff
                     //like this shouldn't snap mark to cursor (instead of doing this wierd thing of setting globals and reading it back here)
                     //this way the user could just a prepass on all the default commands and change the meta-data to their liking
-                    if (cmd == cut || cmd == copy || cmd == paste || cmd == paste_and_indent || cmd == backspace_char ||
-                       cmd == write_text_input || cmd == write_space || cmd == luis_write_underscore || cmd == luis_write_pointer_arrow ||
-                       cmd == luis_write_tab || cmd == luis_write_newline || cmd == write_text_and_auto_indent ||
-                       cmd == auto_indent_line_at_cursor || cmd == auto_indent_whole_file || cmd == auto_indent_range ||
-                       cmd == delete_range || cmd == luis_multiline_comment_toggle || cmd == place_in_scope || //cmd == luis_surround_in_parens ||
-                       cmd == view_buffer_other_panel || cmd == if_read_only_goto_position || cmd == if_read_only_goto_position_same_panel || cmd == luis_escape)
-                    {
+                    if (cmd == cut || cmd == copy || cmd == paste || cmd == paste_and_indent || cmd == backspace_char || 
+                        cmd == write_text_input || cmd == write_space || cmd == luis_write_underscore || cmd == luis_write_pointer_arrow ||
+                        cmd == luis_write_tab || cmd == luis_write_newline || cmd == write_text_and_auto_indent ||
+                        cmd == auto_indent_line_at_cursor || cmd == auto_indent_whole_file || cmd == auto_indent_range ||
+                        cmd == delete_range || cmd == luis_multiline_comment_toggle || cmd == place_in_scope || //cmd == luis_surround_in_parens ||
+                        cmd == view_buffer_other_panel || cmd == if_read_only_goto_position || cmd == if_read_only_goto_position_same_panel || cmd == luis_escape ||
+                        cmd == goto_line || cmd == goto_prev_jump || cmd == goto_next_jump || cmd == goto_first_jump) {
                         luis_view_clear_flags(app, view, VIEW_NOTEPAD_MODE_MARK_SET);
                         snap_mark_to_cursor = true;
                     }   
                 } 
+                
                 if (snap_mark_to_cursor) {
                     i64 pos = view_get_cursor_pos(app, view);
                     view_set_mark(app, view, seek_pos(pos));

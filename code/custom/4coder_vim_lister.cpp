@@ -445,6 +445,9 @@ function void vim_change_lister_view_back(Application_Links *app){
 
 function Lister_Result
 vim_run_lister(Application_Links *app, Lister *lister){
+    View_ID active_view = get_active_view(app, Access_ReadVisible);
+    Buffer_ID active_buffer = view_get_buffer(app, active_view, Access_ReadVisible);
+    
 	Lister_Result ret;
 	View_ID view = get_this_ctx_view(app, Access_Always);
 	vim_lister_view_id = view;
@@ -496,8 +499,19 @@ vim_run_lister(Application_Links *app, Lister *lister){
 		Lister_Activation_Code result = ListerActivation_Continue;
 		b32 handled = true;
         
+        auto append_textfield_and_update_list = [app, &lister](String_Const_u8 string) {
+            lister_append_text_field(lister, string);
+            lister_append_key(lister, string);
+            
+            string_append(&minibar_string, string);
+            
+            lister->item_index = 0;
+            lister_zero_scroll(lister);
+            lister_update_filtered_list(app, lister);
+        };
+        
 		in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
-		if(in.abort){
+		if (in.abort){
 			block_zero_struct(&lister->out);
 			lister->out.canceled = true;
 			//vim_reset_bottom_text();
@@ -505,17 +519,7 @@ vim_run_lister(Application_Links *app, Lister *lister){
 		}
         
         
-		if(in.event.kind == InputEventKind_KeyStroke){
-            #if 0
-			if(in.event.key.code == KeyCode_W && has_modifier(&in, KeyCode_Control) && lister->handlers.backspace){
-				in.event.key.code = KeyCode_Backspace;
-			}
-			if(in.event.key.code == KeyCode_U && has_modifier(&in, KeyCode_Control) && lister->handlers.backspace){
-				in.event.key.code = KeyCode_Backspace;
-				Input_Modifier_Set *set = get_modifiers(&in.event);
-				set->mods[set->count++] = KeyCode_Shift;
-			}
-            #else //NOTE(luis) added this
+		if (in.event.kind == InputEventKind_KeyStroke) {
             if (in.event.key.code == KeyCode_W) {
                 if (has_modifier(&in, KeyCode_Control)) {
                     block_zero_struct(&lister->out);
@@ -524,8 +528,7 @@ vim_run_lister(Application_Links *app, Lister *lister){
                     //vim_reset_bottom_text();
                     break;
                 }
-            } ;
-            #endif
+            } 
 		}
         
 		switch(in.event.kind){
@@ -538,7 +541,7 @@ vim_run_lister(Application_Links *app, Lister *lister){
             }
         } break;
         
-        case InputEventKind_KeyStroke:{
+        case InputEventKind_KeyStroke: {
             //vim_cursor_blink = 0;
             
             switch(in.event.key.code){
@@ -649,18 +652,7 @@ vim_run_lister(Application_Links *app, Lister *lister){
             //NOTE(luis) setting handling to false will create a textinput event next iteration
             case KeyCode_Comma: { //NOTE(luis) added this
                 if (has_modifier(&in, KeyCode_Control)) {
-                    #if 0
-                    string_append(&lister->text_field, SCu8("_"));
-                    #else
-                    String_Const_u8 string = SCu8("_");
-                    lister_append_text_field(lister, string);
-                    string_append(&minibar_string, string);
-                    lister->item_index = 0;
-                    lister_zero_scroll(lister);
-                    lister_update_filtered_list(app, lister);
-                    handled = true;
-                    #endif
-                    
+                    append_textfield_and_update_list(SCu8("_"));
                 } else {
                     handled = false;    
                 }
@@ -668,12 +660,26 @@ vim_run_lister(Application_Links *app, Lister *lister){
             
             case KeyCode_Period: { //NOTE(luis) added this
                 if (has_modifier(&in, KeyCode_Control)) {
-                    string_append(&lister->text_field, SCu8("->"));
+                    append_textfield_and_update_list(SCu8("->"));
                 } 
                 else handled = false;
             } break;
             
-            default:{
+            case KeyCode_J: { //NOTE(luis) added this
+                if (has_modifier(&in, KeyCode_Control)) {
+                    if (lister->text_field.size == 0) {
+                        i64 pos = view_get_cursor_pos(app, active_view);
+                        Token *token = get_token_from_pos(app, active_buffer, pos);
+                        if (token && (token->size > 0)) {
+                            String_Const_u8 word = push_buffer_range(app, scratch, active_buffer, Ii64(token));
+                            append_textfield_and_update_list(word);
+                        }
+                    }
+                } 
+                else handled = false;
+            } break;
+            
+            default: {
                 if(lister->handlers.key_stroke != 0){
                     result = lister->handlers.key_stroke(app);
                 }else{ handled = false; }
@@ -739,6 +745,9 @@ vim_run_lister(Application_Links *app, Lister *lister){
     
 	ret = lister->out;
 	vim_lister_view_id = 0;
+    
+    minibar_string.size   = 0;
+    minibar_string.str[0] = 0;
 	return ret;
 }
 
