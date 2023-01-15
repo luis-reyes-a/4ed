@@ -20,3 +20,9 @@ build/custom_4coder.pdb
 build/4ed.exe
 build/4ed.exe
 build/4ed_app.dll
+*.exe
+*.pdb
+build/4ed.pdb
+*.dll
+*.obj
+*.ilk

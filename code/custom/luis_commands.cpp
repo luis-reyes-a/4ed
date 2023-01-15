@@ -1288,6 +1288,7 @@ string_remove_whitespace(String_Const_u8 string) {
     return string;
 }
 
+#if 0
 function Peek_Code_Index_State *
 get_code_peek_state(Application_Links *app, View_ID view, i64 pos, View_ID *peek) {
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
@@ -1534,6 +1535,219 @@ CUSTOM_DOC("prev code index") {
         luis_center_view_top(app);
     }
 } 
+#endif
+
+struct Code_Index_Peek_State {
+    i32 current_note_index;
+    b32 goto_first_note;
+    
+    u32 identifier_length;
+    u8  identifier[128];
+    
+    i32 scope_prefix_scope_count;
+    u32 scope_prefix_length;
+    u8  scope_prefix[128];
+};
+
+function Token *
+expect_token_from_pos(Application_Links *app, Token_Array *array, u64 pos, Token_Base_Kind kind) {
+    Token *token = get_token_from_pos(app, array, pos);
+    if (token && token->kind == kind) return token;
+    else return 0;
+}
+
+function Code_Index_Peek_State *
+get_code_peek_state(Application_Links *app, View_ID view, i64 pos, View_ID *peek) {
+    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+    *peek = luis_get_or_split_peek_window(app, view, ViewSplit_Bottom);
+    
+    Managed_Scope peek_scope = view_get_managed_scope(app, *peek);
+    Code_Index_Peek_State *state = scope_attachment(app, peek_scope, view_code_peek_state, Code_Index_Peek_State);
+    #define FAILED_RETURN_NULL do { view_close(app, *peek); *peek = 0; return 0; } while (0)
+        
+    if (!state) FAILED_RETURN_NULL;
+    
+    Token_Array token_array = get_token_array_from_buffer(app, buffer);
+    if (!token_array.tokens) FAILED_RETURN_NULL;
+    
+    Scope_Prefix scope_prefix = {}; //scope prefix for current identifier
+    String_Const_u8 identifier = {}; //current identifier cursor is at
+    
+    Scratch_Block scratch(app);
+    if (Token *identifier_token = expect_token_from_pos(app, &token_array, pos, TokenBaseKind_Identifier)) {
+        identifier = push_token_lexeme(app, scratch, buffer, identifier_token);
+        
+        Token_Iterator_Array it = token_iterator_pos(0, &token_array, identifier_token->pos - 1);
+        Token *at = token_it_read(&it);
+        
+        auto is_scope_operator = [](Token *token) -> bool {
+            return (token && token->kind == TokenBaseKind_Operator && token->sub_kind == TokenCppKind_ColonColon);
+        };
+
+        Token *first_token = identifier_token; //either another identifier or :: operator
+        while (is_scope_operator(at)) {
+            first_token = at;
+            scope_prefix.scope_count += 1;
+            token_it_dec_non_whitespace(&it);
+            at = token_it_read(&it);
+            
+            if (at->kind == TokenBaseKind_Identifier) {
+                first_token = at;
+                token_it_dec_non_whitespace(&it);
+                at = token_it_read(&it);
+            } else {
+                break; //token that shouldn't be part of the scoped identifier
+            }
+        }
+        
+        if (first_token != identifier_token) { //means we have a scope_prefix
+            Range_i64 range = {first_token->pos, identifier_token->pos};
+            scope_prefix.string = push_buffer_range(app, scratch, buffer, range);
+            scope_prefix.string = string_remove_whitespace(scope_prefix.string);
+            if (!is_scope_operator(first_token)) {
+                //NOTE our helper functions that use Scope_Prefix should be doing this for us...
+                scope_prefix.string = push_stringf(scratch, "::%.*s", string_expand(scope_prefix.string));
+                scope_prefix.scope_count += 1;
+            }
+        } else {
+            scope_prefix = get_entire_scope_prefix(app, scratch, buffer, pos);
+        }
+    }
+    
+    if (identifier.size == 0)                         FAILED_RETURN_NULL;
+    if (identifier.size > countof(state->identifier)) FAILED_RETURN_NULL;
+    
+    if (scope_prefix.string.size > countof(state->scope_prefix)) FAILED_RETURN_NULL;
+    
+    state->goto_first_note = false;
+    if (!string_match(SCu8(state->identifier, state->identifier_length), identifier)) {
+        state->goto_first_note    = true;
+        state->current_note_index = 0;
+        state->identifier_length = (u32)identifier.size;
+        block_copy(state->identifier, identifier.str, state->identifier_length);
+        
+        state->scope_prefix_length = (u32)scope_prefix.string.size;
+        block_copy(state->scope_prefix, scope_prefix.string.str, state->scope_prefix_length);
+        state->scope_prefix_scope_count = scope_prefix.scope_count;
+    }
+    return state;
+}
+
+function b32
+luis_goto_code_index_note(Application_Links *app, View_ID peek, Code_Index_Peek_State *state, i32 target_note_index) {
+    if (target_note_index < 0)         return false;
+    if (state->identifier_length == 0) return false;
+    
+    String_Const_u8 identifier = {state->identifier, state->identifier_length};
+    Scope_Prefix scope_prefix = {};
+    scope_prefix.string = {state->scope_prefix, state->scope_prefix_length};
+    scope_prefix.scope_count = state->scope_prefix_scope_count;
+    
+    
+    auto get_match_metric = [&scope_prefix] (Scope_Prefix prefix) -> i32{
+        i32 search_length = (i32)Min(prefix.string.size, scope_prefix.string.size);
+        i32 match_count = 0;
+        for (i32 i = 0; i < search_length; i += 1) {
+            if (prefix.string.str[i] == scope_prefix.string.str[i]) {
+                if (i > 0 && prefix.string.str[i-1] == ':' && prefix.string.str[i] == ':') {
+                    match_count += 1;
+                }
+            }
+            else break;
+        }
+        
+        i32 non_match_count = prefix.scope_count - match_count;
+            //i32 non_match_count = scope_prefix_scope_count - match_count;
+        return match_count - 2*non_match_count;
+    };
+    
+    i32 notes_found_count = 0;
+    Code_Index_Note *notes_found[32];
+    
+    Scratch_Block scratch(app); //need this for get_entire_scope_prefix()
+    Code_Index_Note *first_note = code_index_note_from_string(identifier);
+    for (Code_Index_Note *note = first_note; note; note = note->next_in_hash) {
+        if (notes_found_count == countof(notes_found)) break;
+            //ignore type and function decls
+        if (note->note_kind == CodeIndexNote_Type_Definition     ||
+            note->note_kind == CodeIndexNote_Function_Definition ||
+            note->note_kind == CodeIndexNote_Macro               ||
+            note->note_kind == CodeIndexNote_Namespace) {    
+            if (!string_match(note->text, identifier)) continue;
+            
+            notes_found[notes_found_count++] = note;
+            Scope_Prefix note_prefix = get_entire_scope_prefix(app, scratch, note->file->buffer, note->pos.min);
+            i32 note_metric = get_match_metric(note_prefix);
+            
+            //the higher the number, the better the result will be
+            //add to array already sorted
+            //insertion sort based on scope match metric
+            for (i32 i = notes_found_count - 2; i >= 0; i -= 1) {
+                Code_Index_Note *prev = notes_found[i];
+                Assert (notes_found[i+1] == note); //NOTE (i+1) should always be our note
+                
+                Scope_Prefix prev_prefix = get_entire_scope_prefix(app, scratch, prev->file->buffer, prev->pos.min);
+                i32 prev_metric = get_match_metric(prev_prefix);
+                
+                if (prev_metric < note_metric) {
+                    SWAP(notes_found[i], notes_found[i+1]); 
+                } else {
+                    break; //we are ordered nothing else to do    
+                }
+            }    
+        }
+        
+    }
+    
+    if (target_note_index < notes_found_count) {
+        Code_Index_Note *note = notes_found[target_note_index];
+        view_set_active(app, peek);
+        view_set_buffer(app, peek, note->file->buffer, 0);
+        view_set_cursor_and_preferred_x(app, peek, seek_pos(note->pos.first));
+        view_set_mark(app, peek, seek_pos(note->pos.first));
+        luis_center_view_top(app);
+        return true;
+    } else {
+        return false;
+    }
+}
+
+CUSTOM_COMMAND_SIG(luis_code_index_next)
+CUSTOM_DOC("next code index") {
+    View_ID view = get_active_view(app, Access_Always);
+    View_ID peek;
+    Code_Index_Peek_State *state = get_code_peek_state(app, view, view_get_cursor_pos(app, view), &peek);
+    if (!state) return;
+    
+    i32 target_note_index = state->current_note_index + 1;
+    if (state->goto_first_note) target_note_index = 0; 
+        
+    if (luis_goto_code_index_note(app, peek, state, target_note_index)) {
+        state->current_note_index = target_note_index;
+    } else if (state->goto_first_note) {
+        //if we failed the first time, then close the view...
+        view_close(app, peek);
+    }
+    
+}
+
+CUSTOM_COMMAND_SIG(luis_code_index_prev)
+CUSTOM_DOC("prev code index") {
+    View_ID view = get_active_view(app, Access_Always);
+    View_ID peek;
+    Code_Index_Peek_State *state = get_code_peek_state(app, view, view_get_cursor_pos(app, view), &peek);
+    if (!state) return;
+    
+    i32 target_note_index = Max(0, state->current_note_index - 1);
+    if (state->goto_first_note) target_note_index = 0;
+        
+    if (luis_goto_code_index_note(app, peek, state, target_note_index)) {
+        state->current_note_index = target_note_index;
+    } else if (state->goto_first_note) {
+        //if we failed the first time, then close the view...
+        view_close(app, peek);
+    }
+}
 
 
 function void
