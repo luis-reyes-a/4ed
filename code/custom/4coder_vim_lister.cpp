@@ -479,7 +479,7 @@ vim_run_lister(Application_Links *app, Lister *lister){
     //};
     
 	User_Input in = {};
-	for(;;){
+	for(;;) {
         Vim_Calc_Col_Row_Count col_row = calc_col_row(app, lister);
 		i32 col_num = col_row.visible_col_count;
 		i32 visible_count = col_row.visible_col_count*col_row.visible_row_count;

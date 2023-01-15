@@ -117,7 +117,7 @@ CUSTOM_DOC("writes {}")
     //global_history_edit_group_begin(app);
     //NOTE I check for space after the keyword to ensure it's not a substring of a bigger word
     //this will miss if there's a newline right after it. The more correct way of doing this is with tokens
-    String_Const_u8 string = {}; 
+    String_Const_u8 string = {};; 
     if(strmatch_so_far(SCu8("struct "), line, 7) ||
         strmatch_so_far(SCu8("enum "),   line, 5) ||
         strmatch_so_far(SCu8("union "),  line, 6))
@@ -982,8 +982,20 @@ CUSTOM_DOC("Show code indexes for buffer") {
     
     
     //Tiny_Jump result = {};
+    View_ID init_view = get_active_view(app, Access_ReadVisible);
+    luis_view_clear_flags(app, init_view, VIEW_NOTEPAD_MODE_MARK_SET);
+    Buffer_ID init_buffer = view_get_buffer(app, init_view, Access_ReadVisible);
+    i64 init_cursor = view_get_cursor_pos(app, init_view);
+    Buffer_Scroll init_view_scroll = view_get_buffer_scroll (app, init_view);
+    
+    
     Lister_Result l_result = vim_run_lister(app, lister);
-    if (!l_result.canceled && l_result.user_data != 0){
+    if (l_result.canceled) {
+        //view_set_active(app, active); //should never have changed
+        view_set_buffer(app, init_view, init_buffer, 0);
+        view_set_cursor_and_preferred_x(app, init_view, seek_pos(init_cursor));
+        view_set_buffer_scroll(app, init_view, init_view_scroll, SetBufferScroll_SnapCursorIntoView);
+    } else if (l_result.user_data) {
         //block_copy_struct(&result, (Tiny_Jump*)l_result.user_data);
         
         //View_ID view = get_active_view(app, Access_Always);
@@ -996,12 +1008,6 @@ CUSTOM_DOC("Show code indexes for buffer") {
         view_set_cursor_and_preferred_x(app, view, seek_pos(note->pos.first));
         //luis_center_view_top(app);
     }
-    
-    //if (result.buffer != 0){
-        //View_ID view = get_this_ctx_view(app, Access_Always);
-        //point_stack_push_view_cursor(app, view);
-        //jump_to_location(app, view, result.buffer, result.pos);
-    //}
 }
 
 
@@ -1070,10 +1076,20 @@ CUSTOM_DOC("Show code indexes for all buffer") {
     code_index_unlock();
     
     
-    //Tiny_Jump result = {};
-    //Lister_Result l_result = run_lister(app, lister);
+    View_ID init_view = get_active_view(app, Access_ReadVisible);
+    luis_view_clear_flags(app, init_view, VIEW_NOTEPAD_MODE_MARK_SET);
+    Buffer_ID init_buffer = view_get_buffer(app, init_view, Access_ReadVisible);
+    i64 init_cursor = view_get_cursor_pos(app, init_view);
+    Buffer_Scroll init_view_scroll = view_get_buffer_scroll (app, init_view);
+    
+    
     Lister_Result l_result = vim_run_lister(app, lister);
-    if (!l_result.canceled && l_result.user_data != 0){
+    if (l_result.canceled) {
+        //view_set_active(app, active); //should never have changed
+        view_set_buffer(app, init_view, init_buffer, 0);
+        view_set_cursor_and_preferred_x(app, init_view, seek_pos(init_cursor));
+        view_set_buffer_scroll(app, init_view, init_view_scroll, SetBufferScroll_SnapCursorIntoView);
+    } else if (l_result.user_data) {
         //block_copy_struct(&result, (Tiny_Jump*)l_result.user_data);
         
         //View_ID view = get_active_view(app, Access_Always);
@@ -1147,11 +1163,19 @@ CUSTOM_DOC("Show code indexes for all buffer") {
     }
     code_index_unlock();
     
+    View_ID init_view = get_active_view(app, Access_ReadVisible);
+    luis_view_clear_flags(app, init_view, VIEW_NOTEPAD_MODE_MARK_SET);
+    Buffer_ID init_buffer = view_get_buffer(app, init_view, Access_ReadVisible);
+    i64 init_cursor = view_get_cursor_pos(app, init_view);
+    Buffer_Scroll init_view_scroll = view_get_buffer_scroll (app, init_view);
     
-    //Tiny_Jump result = {};
-    //Lister_Result l_result = run_lister(app, lister);
     Lister_Result l_result = vim_run_lister(app, lister);
-    if (!l_result.canceled && l_result.user_data != 0){
+    if (l_result.canceled) {
+        //view_set_active(app, active); //should never have changed
+        view_set_buffer(app, init_view, init_buffer, 0);
+        view_set_cursor_and_preferred_x(app, init_view, seek_pos(init_cursor));
+        view_set_buffer_scroll(app, init_view, init_view_scroll, SetBufferScroll_SnapCursorIntoView);
+    } else if (l_result.user_data) {
         //block_copy_struct(&result, (Tiny_Jump*)l_result.user_data);
         
         //View_ID view = get_active_view(app, Access_Always);
@@ -1165,12 +1189,6 @@ CUSTOM_DOC("Show code indexes for all buffer") {
         view_set_cursor_and_preferred_x(app, view, seek_pos(note->pos.first));
         //luis_center_view_top(app);
     }
-    
-    //if (result.buffer != 0){
-        //View_ID view = get_this_ctx_view(app, Access_Always);
-        //point_stack_push_view_cursor(app, view);
-        //jump_to_location(app, view, result.buffer, result.pos);
-    //}
 }
 
 #if 0

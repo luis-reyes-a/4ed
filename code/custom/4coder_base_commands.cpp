@@ -1256,7 +1256,8 @@ CUSTOM_DOC("Queries the user for a needle and string. Replaces all occurences of
 }
 
 function void
-query_replace_base(Application_Links *app, View_ID view, Buffer_ID buffer_id, i64 pos, String_Const_u8 r, String_Const_u8 w){
+query_replace_base(Application_Links *app, View_ID view, Buffer_ID buffer_id, i64 init_pos, String_Const_u8 r, String_Const_u8 w){
+    i64 pos = init_pos;
     i64 new_pos = 0;
     seek_string_forward(app, buffer_id, pos - 1, 0, r, &new_pos);
     
@@ -1270,28 +1271,23 @@ query_replace_base(Application_Links *app, View_ID view, Buffer_ID buffer_id, i6
             break;
         }
         
-        i64 size = buffer_get_size(app, buffer_id);
+        i64 size = buffer_get_size(app, buffer_id);;
         if (match.max <= size &&
             (match_key_code(&in, KeyCode_Y) ||
              match_key_code(&in, KeyCode_Return) ||
              match_key_code(&in, KeyCode_Tab))){
-            buffer_replace_range(app, buffer_id, match, w);
+            buffer_replace_range(app, buffer_id, match, w);;
             pos = match.start + w.size;
         }
         else{
             pos = match.max;
         }
         
-        seek_string_forward(app, buffer_id, pos, 0, r, &new_pos);
+        seek_string_forward(app, buffer_id, pos, 0, r, &new_pos);;
     }
     
-    view_disable_highlight_range(app, view);
-    
-    if (in.abort){
-        return;
-    }
-    
-    view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
+    view_disable_highlight_range(app, view);;
+    view_set_cursor_and_preferred_x(app, view, seek_pos(init_pos));
 }
 
 function void
