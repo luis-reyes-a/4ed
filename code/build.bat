@@ -1,2 +1,2 @@
 
-bin\build.bat 
+bin\build_optimized.bat 

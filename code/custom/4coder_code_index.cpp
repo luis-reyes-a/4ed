@@ -353,7 +353,7 @@ function Code_Index_Nest*
 generic_parse_preprocessor(Code_Index_File *index, Generic_Parse_State *state);
 
 function Code_Index_Nest*
-generic_parse_scope(Code_Index_File *index, Generic_Parse_State *state);
+generic_parse_scope(Code_Index_File *index, Generic_Parse_State *state, u32 nest_flags);
 
 function Code_Index_Nest*
 generic_parse_paren(Code_Index_File *index, Generic_Parse_State *state);
@@ -444,7 +444,9 @@ cpp_parse_type_structure(Code_Index_File *index, Generic_Parse_State *state, Cod
                 token->kind == TokenBaseKind_ScopeOpen && 
                 (sub_kind == TokenCppKind_Struct ||
                  sub_kind == TokenCppKind_Union)) {
-                note->nest = generic_parse_scope(index, state);
+                
+                u32 note_nest_flags = (sub_kind == TokenCppKind_Struct) ? CODE_INDEX_NEST_IS_STRUCT : CODE_INDEX_NEST_IS_UNION;
+                note->nest = generic_parse_scope(index, state, note_nest_flags);
                 if (note->nest) {
                     note->nest->parent = parent;
                     note->nest->text = note->text; //TODO we probably just want to copy this. We don't know how this string is being used around the codebase 
@@ -490,7 +492,7 @@ cpp_parse_namespace(Code_Index_File *index, Generic_Parse_State *state, Code_Ind
             
             #if 1 //NOTE(luis) added this
             if (note && peek->kind == TokenBaseKind_ScopeOpen) {
-                note->nest = generic_parse_scope(index, state);
+                note->nest = generic_parse_scope(index, state, CODE_INDEX_NEST_IS_NAMESPACE);
                 if (note->nest) {
                     note->nest->parent = parent;
                     note->nest->text = note->text; //TODO we probably just want to copy this. We don't know how this string is being used around the codebase 
@@ -804,7 +806,7 @@ cpp_parse_function(Code_Index_File *index, Generic_Parse_State *state, Code_Inde
         
         #if 1 
         if (note && token->kind == TokenBaseKind_ScopeOpen) {
-            note->nest = generic_parse_scope(index, state);
+            note->nest = generic_parse_scope(index, state, CODE_INDEX_NEST_IS_FUNCTION);
             if (note->nest) {
                 note->nest->parent = parent;
                 note->nest->text = note->text; //TODO we probably just want to copy this. We don't know how this string is being used around the codebase 
@@ -930,7 +932,7 @@ generic_parse_preprocessor(Code_Index_File *index, Generic_Parse_State *state){
         }
         
         if (token->kind == TokenBaseKind_ScopeOpen){
-            Code_Index_Nest *nest = generic_parse_scope(index, state);
+            Code_Index_Nest *nest = generic_parse_scope(index, state, 0);
             nest->parent = result;
             code_index_push_nest(&result->nest_list, nest);
             continue;
@@ -960,9 +962,10 @@ generic_parse_preprocessor(Code_Index_File *index, Generic_Parse_State *state){
 }
 
 function Code_Index_Nest*
-generic_parse_scope(Code_Index_File *index, Generic_Parse_State *state){
+generic_parse_scope(Code_Index_File *index, Generic_Parse_State *state, u32 nest_flags) {
     Token *token = token_it_read(&state->it);
     Code_Index_Nest *result = push_array_zero(state->arena, Code_Index_Nest, 1);
+    result->flags = nest_flags;
     result->kind = CodeIndexNest_Scope;
     result->open = Ii64(token);
     result->close = Ii64(max_i64);
@@ -1000,7 +1003,7 @@ generic_parse_scope(Code_Index_File *index, Generic_Parse_State *state){
         }
         
         if (token->kind == TokenBaseKind_ScopeOpen){
-            Code_Index_Nest *nest = generic_parse_scope(index, state);
+            Code_Index_Nest *nest = generic_parse_scope(index, state, 0);
             nest->parent = result;
             code_index_push_nest(&result->nest_list, nest);
             continue;
@@ -1032,12 +1035,16 @@ generic_parse_scope(Code_Index_File *index, Generic_Parse_State *state){
                 continue;
             }
             else if (looks_like_return_base_type(token)) { //NOTE this must be called before == Keyword (since it also check keyword)
-                Code_Index_Note *note = cpp_parse_function(index, state, result);
-                if (note && note->nest) {
-                    note->nest->parent = result;
-                    code_index_push_nest(&result->nest_list, note->nest);
-                }
-                continue;
+                //NOTE cpp can't have functions inside functions, but the main reason we do this is because 
+                //constructor syntax (e.g. Class my_class();) confuses the parser into thinking it's a function decl... 
+                if (result->flags & (CODE_INDEX_NEST_IS_STRUCT|CODE_INDEX_NEST_IS_UNION|CODE_INDEX_NEST_IS_NAMESPACE)) {
+                    Code_Index_Note *note = cpp_parse_function(index, state, result);
+                    if (note && note->nest) {
+                        note->nest->parent = result;
+                        code_index_push_nest(&result->nest_list, note->nest);
+                    }
+                    continue;    
+                } 
             }
         }
         #endif
@@ -1052,8 +1059,8 @@ generic_parse_scope(Code_Index_File *index, Generic_Parse_State *state){
             nest->parent = result;
             code_index_push_nest(&result->nest_list, nest);
             
-// NOTE(allen): after a parenthetical group we consider ourselves immediately
-// transitioning into a statement
+            // NOTE(allen): after a parenthetical group we consider ourselves immediately
+            // transitioning into a statement
             nest = generic_parse_statement(index, state);
             nest->parent = result;
             code_index_push_nest(&result->nest_list, nest);
@@ -1176,7 +1183,7 @@ generic_parse_paren(Code_Index_File *index, Generic_Parse_State *state){
         }
         
         if (token->kind == TokenBaseKind_ScopeOpen){
-            Code_Index_Nest *nest = generic_parse_scope(index, state);
+            Code_Index_Nest *nest = generic_parse_scope(index, state, 0);
             nest->parent = result;
             code_index_push_nest(&result->nest_list, nest);
             continue;
@@ -1219,7 +1226,7 @@ generic_parse_full_input_breaks(Code_Index_File *index, Generic_Parse_State *sta
             code_index_push_nest(&index->nest_list, nest);
         }
         else if (token->kind == TokenBaseKind_ScopeOpen){
-            Code_Index_Nest *nest = generic_parse_scope(index, state);
+            Code_Index_Nest *nest = generic_parse_scope(index, state, 0);
             code_index_push_nest(&index->nest_list, nest);
         }
         else if (token->kind == TokenBaseKind_ParentheticalOpen){
