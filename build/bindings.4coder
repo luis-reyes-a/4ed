@@ -28,6 +28,7 @@ keys_global = {
     { "move_left",              "Left" },
     { "move_right",             "Right" },
 
+    { "seek_beginning_of_line",       "A", "Control" },
 	{ "luis_end",       "End" },
     { "luis_home",      "Home" },
     { "page_up",        "PageUp" },
@@ -187,7 +188,9 @@ keys_modal = {
 	{ "move_left",  "W" },
     { "move_right", "R" },
 	 
+	
 	{ "luis_home", "A" },
+	{ "seek_beginning_of_line",       "A", "Control" },
     { "luis_end",  "G" },
     { "page_up",                "PageUp" },
     { "page_down",              "PageDown" },

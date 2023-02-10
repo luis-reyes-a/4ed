@@ -466,17 +466,6 @@ vim_run_lister(Application_Links *app, Lister *lister){
 	ctx.hides_buffer = false;
 	View_Context_Block ctx_block(app, view, &ctx);
     
-	//u8 *begin, *dest;
-	//begin = dest = vim_bot_text.str + vim_bot_text.size;
-	//u64 base_size, after_size;
-	//base_size = after_size = vim_bot_text.size;
-    //Assert (minibar_string.cap >= minibar_string.size);
-    //u8 *minibar_string_at = minibar_string.str + minibar_string.size;
-    //u64 minibar_max_size_can_write = minibar_string.cap - minibar_string.size;
-    //u64 minibar_current_length = 0;
-    //defer {
-        //minibar_string.size += minibar_current_length; 
-    //};
     
 	User_Input in = {};
 	for(;;) {
@@ -484,15 +473,6 @@ vim_run_lister(Application_Links *app, Lister *lister){
 		i32 col_num = col_row.visible_col_count;
 		i32 visible_count = col_row.visible_col_count*col_row.visible_row_count;
         
-        //bool lister_textfield_modified = false; //do thing in rare case textfield modified but the length was preserved (backspace+enter_char at exact same time... )
-        //u64 init_textfield_size = lister->text_field.size;
-        //defer {
-            //if (lister_textfield_modified || (lister->text_field.size != init_textfield_size)) {
-                //minibar_current_length = Min(minibar_max_size_can_write, lister->text_field.size);
-                //if (minibar_current_length > 0)
-                    //block_copy(minibar_string_at, lister->text_field.str, minibar_current_length);
-            //}
-        //};
         
 		animate_in_n_milliseconds(app, 0);
         
@@ -568,6 +548,22 @@ vim_run_lister(Application_Links *app, Lister *lister){
                 result = ListerActivation_Finished;
             } break;
             
+            case KeyCode_Space: if (has_modifier(&in, KeyCode_Control)) {
+                void *user_data = 0;
+                if(in_range(0, lister->raw_item_index, lister->options.count)){
+                    user_data = lister_get_user_data(lister, lister->raw_item_index);
+                    
+                    //upate minibar string to fill in what the entry string was
+                    //minibar_current_length = Min(minibar_max_size_can_write, lister->highlighted_node->string.size);
+                    //block_copy(minibar_string_at, lister->highlighted_node->string.str, minibar_current_length);
+                }
+                lister_activate(app, lister, user_data, false);
+                result = ListerActivation_Finished;
+            } else {
+                handled = false;
+            } 
+            break;
+            
             case KeyCode_Backspace:{
                 if(lister->handlers.backspace != 0){
                     lister->handlers.backspace(app);
@@ -609,6 +605,29 @@ vim_run_lister(Application_Links *app, Lister *lister){
                 #endif
             } break;
             
+            case KeyCode_E:
+            case KeyCode_D: if (has_modifier(&in, KeyCode_Control)) {
+                if (lister->handlers.navigate) {
+                    i32 ypos = lister->item_index / col_num;
+                    i32 xpos = lister->item_index - ypos*col_num;
+                    
+                    if (in.event.key.code == KeyCode_D) {
+                        ypos += 1;
+                        if (ypos >= col_row.max_row_count) ypos = 0;
+                    }
+                    else {
+                        ypos -= 1;
+                        if (ypos < 0) ypos = col_row.max_row_count-1;
+                    }
+                    
+                    i32 new_item_index = ypos*col_num + xpos;    
+                    lister->handlers.navigate(app, view, lister, new_item_index - lister->item_index);
+                }
+            } else {
+                handled = false;   
+            }
+            break;
+            
             case KeyCode_Right:
             case KeyCode_Left:{
                 #if 0 //prev way
@@ -638,6 +657,29 @@ vim_run_lister(Application_Links *app, Lister *lister){
                 }
                 #endif
             } break;
+            
+            case KeyCode_S:
+            case KeyCode_F: if (has_modifier(&in, KeyCode_Control)) {
+                if (lister->handlers.navigate) {
+                    i32 ypos = lister->item_index / col_num;
+                    i32 xpos = lister->item_index - ypos*col_num;
+                    
+                    if (in.event.key.code == KeyCode_S) {
+                        xpos -= 1;
+                        if (xpos < 0) xpos = col_num-1;
+                    }
+                    else {
+                        xpos += 1;
+                        if (xpos >= col_num) xpos = 0;
+                    }
+                    
+                    i32 new_item_index = ypos*col_num + xpos;    
+                    lister->handlers.navigate(app, view, lister, new_item_index - lister->item_index);
+                }
+            } else {
+                handled = false;   
+            }
+            break;
             
             case KeyCode_PageDown:
             case KeyCode_PageUp:{
@@ -682,7 +724,7 @@ vim_run_lister(Application_Links *app, Lister *lister){
             default: {
                 if(lister->handlers.key_stroke != 0){
                     result = lister->handlers.key_stroke(app);
-                }else{ handled = false; }
+                } else{ handled = false; }
             } break;
             }
         } break;
