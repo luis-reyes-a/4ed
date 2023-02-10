@@ -1166,3 +1166,105 @@ luis_whole_screen_render_caller(Application_Links *app, Frame_Info frame_info) {
                          0, V2f32(cos_f32(pi_f32*.333f), sin_f32(pi_f32*.333f)));
 #endif
 }
+
+BUFFER_HOOK_SIG(luis_new_file) {
+    Scratch_Block scratch(app);
+    String_Const_u8 file_name = push_buffer_base_name(app, scratch, buffer_id);
+    if (!string_match(string_postfix(file_name, 2), string_u8_litexpr(".h"))) {
+        return(0);
+    }
+    
+    List_String_Const_u8 guard_list = {};
+    for (u64 i = 0; i < file_name.size; ++i){
+        u8 c[2] = {};
+        u64 c_size = 1;
+        u8 ch = file_name.str[i];
+        if ('A' <= ch && ch <= 'Z'){
+            c_size = 2;
+            c[0] = '_';
+            c[1] = ch;
+        }
+        else if ('0' <= ch && ch <= '9'){
+            c[0] = ch;
+        }
+        else if ('a' <= ch && ch <= 'z'){
+            c[0] = ch - ('a' - 'A');
+        }
+        else{
+            c[0] = '_';
+        }
+        String_Const_u8 part = push_string_copy(scratch, SCu8(c, c_size));
+        string_list_push(scratch, &guard_list, part);
+    }
+    String_Const_u8 guard = string_list_flatten(scratch, guard_list);
+    
+    Date_Time date_time = system_now_date_time_universal();
+    date_time = system_local_date_time_from_universal(&date_time);
+    //String_Const_u8 date_string = date_time_format(scratch, "month day yyyy h:mimi ampm", &date_time);
+    String_Const_u8 date_string = date_time_format(scratch, "month day yyyy", &date_time);
+    
+    Buffer_Insertion insert = begin_buffer_insertion_at_buffered(app, buffer_id, 0, scratch, KB(16));
+    insertf(&insert,
+            "#ifndef %.*s //Created on %*s \n"
+            "#define %.*s\n"
+            "\n"
+            "#endif //%.*s\n",
+            string_expand(guard),
+            string_expand(date_string),
+            string_expand(guard),
+            string_expand(guard));
+    end_buffer_insertion(&insert);
+    
+    return(0);
+}
+
+function Rect_f32
+luis_buffer_region(Application_Links *app, View_ID view_id, Rect_f32 region){
+    Buffer_ID buffer = view_get_buffer(app, view_id, Access_Always);
+    Face_ID face_id = get_face_id(app, buffer);
+    Face_Metrics metrics = get_face_metrics(app, face_id);
+    f32 line_height = metrics.line_height;
+    f32 digit_advance = metrics.decimal_digit_advance;
+    
+    // NOTE(allen): margins
+    region = rect_inner(region, 3.f);
+    
+    // NOTE(allen): file bar
+    b64 showing_file_bar = false;
+    if (view_get_setting(app, view_id, ViewSetting_ShowFileBar, &showing_file_bar) &&
+        showing_file_bar){
+        Rect_f32_Pair pair = layout_file_bar_on_top(region, line_height);
+        region = pair.max;
+    }
+    
+    // NOTE(allen): query bars
+    {
+        Query_Bar *space[32];
+        Query_Bar_Ptr_Array query_bars = {};
+        query_bars.ptrs = space;
+        if (get_active_query_bars(app, view_id, ArrayCount(space), &query_bars)){
+            Rect_f32_Pair pair = layout_query_bar_on_top(region, line_height, query_bars.count);
+            region = pair.max;
+        }
+    }
+    
+    // NOTE(allen): FPS hud
+    if (show_fps_hud){
+        Rect_f32_Pair pair = layout_fps_hud_on_bottom(region, line_height);
+        region = pair.min;
+    }
+    
+    // NOTE(allen): line numbers
+    b32 show_line_number_margins = def_get_config_b32(vars_save_string_lit("show_line_number_margins"));
+    if (show_line_number_margins){
+        Rect_f32_Pair pair = layout_line_number_margin(app, buffer, region, digit_advance);
+        region = pair.max;
+    }
+    
+    if (1) { //NOTE this is the VIM style status bar on bottom of screen
+        Rect_f32_Pair pair = layout_file_bar_on_bot(region, line_height);
+        region = pair.min;
+    }
+    
+    return(region);
+}

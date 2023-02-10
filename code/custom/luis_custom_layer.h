@@ -793,7 +793,7 @@ get_entire_scope_prefix(Application_Links *app, Arena *arena, Buffer_ID buffer, 
         }
     }
     
-            //insertion sort by greatest to smallest
+    //insertion sort by greatest to smallest
     for (i32 i = 1; i < outer_note_count; i += 1) {
         
         auto get_size = [](Code_Index_Note *note) {

@@ -47,6 +47,9 @@ custom_layer_init(Application_Links *app) {
     set_custom_hook(app, HookID_ViewEventHandler, luis_view_input_handler);
     set_custom_hook(app, HookID_RenderCaller, luis_render_caller);
     set_custom_hook(app, HookID_WholeScreenRenderCaller, luis_whole_screen_render_caller);
+    set_custom_hook(app, HookID_NewFile, luis_new_file);
+    set_custom_hook(app, HookID_BufferRegion, luis_buffer_region);
+    
     
     
     mapping_init(tctx, &framework_mapping);

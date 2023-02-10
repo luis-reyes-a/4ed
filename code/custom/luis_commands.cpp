@@ -951,7 +951,7 @@ CUSTOM_DOC("Show code indexes for buffer") {
                 }
                 
                 i32  parent_count = 0;
-                i32  max_parent_count = 12;
+                i32  max_parent_count = 64;
                 Code_Index_Nest **parents = push_array_zero(temp, Code_Index_Nest *, max_parent_count);
                 
                 if (parents) for (Code_Index_Nest *parent = note->parent; parent && parent->text.size > 0; parent = parent->parent) {
@@ -1046,7 +1046,7 @@ CUSTOM_DOC("Show code indexes for all buffer") {
                 }
                 
                 i32  parent_count = 0;
-                i32  max_parent_count = 12;
+                i32  max_parent_count = 64;
                 Code_Index_Nest **parents = push_array_zero(temp, Code_Index_Nest *, max_parent_count);
                 
                 if (parents) for (Code_Index_Nest *parent = note->parent; parent && parent->text.size > 0; parent = parent->parent) {
@@ -1134,7 +1134,7 @@ CUSTOM_DOC("Show code indexes for all buffer") {
             String_u8 string = string_u8_push(temp, 512);
             
             i32  parent_count = 0;
-            i32  max_parent_count = 12;
+            i32  max_parent_count = 64;
             Code_Index_Nest **parents = push_array_zero(temp, Code_Index_Nest *, max_parent_count);
             
             if (parents) for (Code_Index_Nest *parent = note->parent; parent && parent->text.size > 0; parent = parent->parent) {
@@ -1188,6 +1188,191 @@ CUSTOM_DOC("Show code indexes for all buffer") {
         view_set_buffer(app, view, note->file->buffer, 0);
         view_set_cursor_and_preferred_x(app, view, seek_pos(note->pos.first));
         //luis_center_view_top(app);
+    }
+}
+
+struct Code_Variable {
+    Range_i64 scope_range;
+    Code_Index_Note *type;
+    Token name_token;
+};
+
+function String_Const_u8
+print_messagef(Application_Links *app, Arena *arena, char *format, ...){
+    va_list args;
+    va_start(args, format);
+    String_Const_u8 result = push_stringfv(arena, format, args);
+    print_message(app, result);
+    va_end(args);
+    return(result);
+}
+
+static String_Const_u8
+get_type_keyword_string(Token *token) {
+    if (token && token->kind == TokenBaseKind_Keyword) {
+        switch (token->sub_kind) {
+        case TokenCppKind_Void:     return string_u8_litexpr("void");
+        case TokenCppKind_Bool:     return string_u8_litexpr("bool");
+        case TokenCppKind_Char:     return string_u8_litexpr("char");
+        case TokenCppKind_Int:      return string_u8_litexpr("int");
+        case TokenCppKind_Float:    return string_u8_litexpr("float");
+        case TokenCppKind_Double:   return string_u8_litexpr("double");
+        }
+    }
+    return {};
+}
+
+static void token_it_skip_pass_parenthetical(Token_Iterator_Array *it) {
+    Token *token = token_it_read(it);
+    if (!token || token->kind != TokenBaseKind_ParentheticalOpen) return;
+    
+    //TokenCppKind_BraceOp = 44, //{
+    //TokenCppKind_BraceCl = 45, //}
+    //TokenCppKind_ParenOp = 46, //(
+    //TokenCppKind_ParenCl = 48, //)
+    //TokenCppKind_BrackOp = 47, //<
+    //TokenCppKind_BrackCl = 49, //>
+    
+    i16 open_kind  = token->sub_kind;
+    i16 close_kind = 0;
+    switch (open_kind) {
+    case TokenCppKind_BraceOp: close_kind = TokenCppKind_BraceCl; break;
+    case TokenCppKind_ParenOp: close_kind = TokenCppKind_ParenCl; break;
+    case TokenCppKind_BrackOp: close_kind = TokenCppKind_BrackCl; break;
+    default: return;
+    }
+    
+    i32 balance = -1;
+    while (balance) {
+        token_it_inc_non_whitespace(it);
+        token = token_it_read(it);
+        if (!token) return;
+        
+        //hmm seem that sub_kind is always unique so we don't really have to check base_kind...
+        //but just cause i'm a paranoid...
+        if (token->kind == TokenBaseKind_ParentheticalOpen || 
+            token->kind == TokenBaseKind_ParentheticalClose) {
+            if      (token->sub_kind == open_kind)  balance -= 1;
+            else if (token->sub_kind == close_kind) balance += 1;
+        }
+    }
+    
+}
+
+CUSTOM_COMMAND_SIG(luis_print_scope_variables)
+CUSTOM_DOC("print scope variables") {
+    View_ID view     = get_active_view(app, Access_Always);
+    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+    Code_Index_File *code_index_file = code_index_get_file(buffer);
+    if (!code_index_file) return;
+    
+    Managed_Scope buffer_scope = buffer_get_managed_scope(app, buffer);
+    if (!buffer_scope) return;
+    
+    i64 cursor_pos = view_get_cursor_pos(app, view);
+    
+    Code_Index_Nest *outermost_nest = 0;
+    for (i32 nest_index = 0; nest_index < code_index_file->nest_array.count; nest_index += 1) {
+        Code_Index_Nest *nest = code_index_file->nest_array.ptrs[nest_index];
+        if (!nest) continue; //should never occur right?
+        if (nest->kind != CodeIndexNest_Scope) continue;
+        if (!(nest->flags & CODE_INDEX_NEST_IS_CLOSED)) continue;
+        
+        
+        i64 start = nest->open.min;
+        i64 end   = nest->close.max;
+        
+        if (cursor_pos >= start && cursor_pos < end) {
+            outermost_nest = nest;
+            break;
+        }
+    }
+    
+    if (outermost_nest) {
+        Scratch_Block scratch(app);
+        i32  outer_nest_count = 0;
+        i32  max_outer_nest_count = 64;
+        Code_Index_Nest **outer_nests = push_array_zero(scratch, Code_Index_Nest *, max_outer_nest_count);
+        
+        Code_Index_Nest *current = outermost_nest;
+        while (current) {
+            outer_nests[outer_nest_count++] = outermost_nest;
+            if (outer_nest_count == max_outer_nest_count) break;
+            
+            Code_Index_Nest *next_current = 0;
+            for (i32 nest_index = 0; nest_index < current->nest_array.count; nest_index += 1) {
+                Code_Index_Nest *nest = current->nest_array.ptrs[nest_index];
+                if (!nest) continue; //should never occur right?
+                if (nest->kind != CodeIndexNest_Scope) continue;
+                if (!(nest->flags & CODE_INDEX_NEST_IS_CLOSED)) break;
+                
+                if (cursor_pos >= nest->open.min && cursor_pos < nest->close.max) {
+                    next_current = nest;
+                }
+            }
+            current = next_current;
+        }
+        
+        Token_Array token_array = get_token_array_from_buffer(app, buffer);
+        if (!token_array.tokens) return;
+        
+        Token_Iterator_Array it = token_iterator_pos(0, &token_array, outermost_nest->open.min);
+        while (Token *token = token_it_read(&it)) {
+            if (token->pos > cursor_pos) break; //we're done
+            
+            b32 is_type_keyword = false;
+            String_Const_u8 typestr = {}; //if we think token is at type identifier, we set this
+            if ((token->kind == TokenBaseKind_ScopeOpen) || (token->kind == TokenBaseKind_ScopeClose) || token->kind == TokenBaseKind_StatementClose) {
+                token_it_inc_non_whitespace(&it);
+                token = token_it_read(&it);
+                if (!token || token->pos > cursor_pos) break;
+                if (token->kind == TokenBaseKind_Identifier) {
+                    typestr = push_token_lexeme(app, scratch, buffer, token);
+                } else if (token->kind == TokenBaseKind_Keyword) {
+                    is_type_keyword = true;
+                    typestr = get_type_keyword_string(token);
+                }
+            }
+            
+            token_it_inc_non_whitespace(&it);
+            token = token_it_read(&it);
+            
+            Code_Index_Note *typenote = 0;
+            if (!is_type_keyword) {
+                typenote = code_index_note_from_string(typestr);
+                if (!typenote) continue;
+                
+                if (token->kind == TokenBaseKind_ParentheticalOpen) {
+                    token_it_skip_pass_parenthetical(&it);
+                    token = token_it_read(&it);
+                    if (!token || token->pos > cursor_pos) break;
+                }
+                //NOTE here we have to skip angle brackets
+            }
+            
+            
+            while (token->kind == TokenBaseKind_Operator && token->sub_kind == TokenCppKind_Star) {
+                token_it_inc_non_whitespace(&it);
+                token = token_it_read(&it);
+                if (!token || token->pos > cursor_pos) break;
+            }
+            if (!token || token->pos > cursor_pos) break;
+            
+            
+            if (token->kind == TokenBaseKind_Identifier) {
+                String_Const_u8 varname = push_token_lexeme(app, scratch, buffer, token);
+                i32 scope_level = outer_nest_count;
+                for (i32 i = outer_nest_count-1; i >= 0; i -= 1) {
+                    Code_Index_Nest *nest = outer_nests[i];
+                    if (token->pos >= nest->open.min && token->pos < nest->close.max) {
+                        break;
+                    } else {
+                        scope_level -= 1;
+                    }
+                }
+                print_messagef(app, scratch, "Found local var: %.*s %.*s at %d scope\n", string_expand(typestr), string_expand(varname), scope_level);
+            }
+        }
     }
 }
 

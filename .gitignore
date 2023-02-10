@@ -26,3 +26,8 @@ build/4ed.pdb
 *.dll
 *.obj
 *.ilk
+*.exe
+*.pdb
+*.dll
+*.obj
+*.ilk
