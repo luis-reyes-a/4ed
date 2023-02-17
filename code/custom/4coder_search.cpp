@@ -160,6 +160,9 @@ list_all_locations__generic(Application_Links *app, String_Const_u8_Array needle
             AddFlag(must_not_have_flags, StringMatch_RightSideSloppy);
         }
         print_all_matches_all_buffers_to_search(app, needle, must_have_flags, must_not_have_flags, target_view);
+ 
+        // NOTE(luis) added this
+        lock_jump_buffer(app, search_name);
     }
 }
 

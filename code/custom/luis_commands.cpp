@@ -609,12 +609,10 @@ CUSTOM_DOC("go end of visual line")
 }
 
 internal View_ID
-luis_find_build_view(Application_Links *app)
-{
+luis_find_build_view(Application_Links *app) {
     View_ID build_view = 0;
     Buffer_ID comp_buffer = get_comp_buffer(app);
-    if(comp_buffer)
-    {
+    if(comp_buffer) {
         for(View_ID v = get_view_next(app, 0, Access_Always); v; v = get_view_next(app, v, Access_Always))
         {
             #if 0 //old tab group way
@@ -749,18 +747,119 @@ CUSTOM_DOC("If the buffer in the active view is writable, inserts a character, o
     }
 }
 
+internal View_ID
+luis_find_first_view_with_buffer(Application_Links *app, Buffer_ID buffer) {
+    if (buffer) {
+        for (View_ID view = get_view_next(app, 0, Access_Always); 
+            view; 
+            view = get_view_next(app, view, Access_Always)) {
+            
+            if (view_get_buffer(app, view, Access_Always) == buffer) {
+                return view;
+            }
+        }
+    }
+    return 0;
+}
+
+static Locked_Jump_State
+luis_get_or_make_locked_jump_state_default_to_comp_or_search_buffer(Application_Links *app, View_ID active_view, Heap *heap) {
+    Locked_Jump_State jump_state = get_locked_jump_state(app, heap);
+    //try to reopen *compilation* buffer to jump around in
+    if (!jump_state.view) {
+        Buffer_ID comp_buffer = get_comp_buffer(app);
+        if (comp_buffer) {
+            View_ID build_view = luis_find_first_view_with_buffer(app, comp_buffer);
+            
+            if (!build_view) {
+                build_view = luis_get_or_split_peek_window(app, active_view, ViewSplit_Bottom);
+                if (build_view) {
+                    if (!view_set_buffer(app, build_view, comp_buffer, 0)) build_view = 0;
+                }
+            }
+            
+            if (build_view) {
+                lock_jump_buffer(app, comp_buffer);    
+                jump_state = get_locked_jump_state(app, heap);
+                
+                if (jump_state.list && jump_state.list->jump_count == 0) {
+                    view_close(app, build_view);
+                    
+                    jump_state.view = 0; 
+                }
+            }
+        }
+    }
+    
+    //try to reopen *search* buffer to jump around in
+    if (!jump_state.view) {
+        Buffer_ID search_buffer = get_buffer_by_name(app, string_u8_litexpr("*search*"), Access_Always);
+        if (search_buffer) {
+            View_ID search_view = luis_find_first_view_with_buffer(app, search_buffer);
+            
+            if (!search_view) {
+                search_view = luis_get_or_split_peek_window(app, active_view, ViewSplit_Bottom);
+                if (search_view) {
+                    if (!view_set_buffer(app, search_view, search_buffer, 0)) search_view = 0;
+                }
+            }
+            
+            if (search_view) {
+                lock_jump_buffer(app, search_buffer);    
+                jump_state = get_locked_jump_state(app, heap);
+                
+                if (jump_state.list && jump_state.list->jump_count == 0) {
+                    view_close(app, search_view);
+                    jump_state.view = 0; 
+                }
+            }
+        }
+    }
+    
+    return jump_state;
+}
+
+CUSTOM_COMMAND_SIG(luis_goto_next_jump)
+CUSTOM_DOC("If a buffer containing jump locations has been locked in, goes to the next jump in the buffer, skipping sub jump locations.") {
+    View_ID active_view = get_active_view(app, Access_Always);
+    Locked_Jump_State jump_state = luis_get_or_make_locked_jump_state_default_to_comp_or_search_buffer(app, active_view, &global_heap);
+    
+    if (jump_state.view) {
+        i64 cursor_position = view_get_cursor_pos(app, jump_state.view);
+        Buffer_Cursor cursor = view_compute_cursor(app, jump_state.view, seek_pos(cursor_position));
+        i64 line = get_line_from_list(app, jump_state.list, jump_state.list_index);
+        if (line <= cursor.line){
+            jump_state.list_index += 1;
+        }
+        goto_next_filtered_jump(app, jump_state.list, jump_state.view, jump_state.list_index, 1, true, true);
+    }
+}
+
+CUSTOM_COMMAND_SIG(luis_goto_prev_jump)
+CUSTOM_DOC("If a buffer containing jump locations has been locked in, goes to the previous jump in the buffer, skipping sub jump locations."){
+    View_ID active_view = get_active_view(app, Access_Always);
+    Locked_Jump_State jump_state = luis_get_or_make_locked_jump_state_default_to_comp_or_search_buffer(app, active_view, &global_heap);
+    
+    if (jump_state.view) {
+        if (jump_state.list_index > 0) {
+            --jump_state.list_index;
+        }
+        goto_next_filtered_jump(app, jump_state.list, jump_state.view, jump_state.list_index, -1, true, true);
+    }
+}
+
+
 CUSTOM_COMMAND_SIG(luis_build)
-CUSTOM_DOC("build")
-{
+CUSTOM_DOC("build") {
     //logprintf(app, "\nluis_build printing (%d groups init)...\n", BUFFER_TAB_GROUP_COUNT);
     View_ID view = get_active_view(app, Access_Always);
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
     
     View_ID build_view = luis_find_build_view(app);
-    if(!build_view)
+    if (!build_view)
         build_view = luis_get_or_split_peek_window(app, view, ViewSplit_Bottom);
     
-    if(build_view) {
+    if (build_view) {
         standard_search_and_build(app, build_view, buffer);
         set_fancy_compilation_buffer_font(app);
         
@@ -2027,7 +2126,24 @@ CUSTOM_DOC("Enter Command Mode") {
     }
 }
 
-
+CUSTOM_COMMAND_SIG(luis_show_search_panel)
+CUSTOM_DOC("Enter Command Mode") {
+    Buffer_ID search_buffer = get_buffer_by_name(app, string_u8_litexpr("*search*"), Access_Always);
+    if (!search_buffer) return;
+    
+    View_ID search_view = luis_find_first_view_with_buffer(app, search_buffer);
+    if (!search_view) {
+        View_ID active_view = get_active_view(app, Access_ReadVisible);
+        search_view = luis_get_or_split_peek_window(app, active_view, ViewSplit_Bottom);
+        if (search_view) {
+            if (!view_set_buffer(app, search_view, search_buffer, 0)) search_view = 0;
+        }
+    }
+    
+    if (search_view) {
+        lock_jump_buffer(app, search_buffer);
+    }
+}
 
 
 internal void

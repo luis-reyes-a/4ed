@@ -16,8 +16,8 @@ keys_global = {
 	{ "save",                          "S", "Control" },
     { "save_all_dirty_buffers",        "S", "Control", "Shift" },
 
-    { "goto_prev_jump",                "PageUp",   "Control" },
-    { "goto_next_jump",                "PageDown", "Control" },
+    { "luis_goto_prev_jump",                "PageUp",   "Control" },
+    { "luis_goto_next_jump",                "PageDown", "Control" },
  
     { "luis_toggle_modal_mode",        "D", "Control" },
     { "vim_command_mode",                "X", "Alt" },
@@ -139,6 +139,8 @@ keys_file = {
     { "luis_list_notes_all_buffers",     "N", "Control" },
 	{ "luis_list_functions_all_buffers", "N", "Alt"},
     { "luis_vim_string_matches",         "M", "Control" },
+	{ "luis_show_search_panel",          "M", "Alt" },
+	
     //{ "luis_code_index_all_buffers",        "N", "Control" },
 	
     { "luis_return",  "Return"},
