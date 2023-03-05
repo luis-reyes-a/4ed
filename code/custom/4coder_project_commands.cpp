@@ -920,7 +920,12 @@ CUSTOM_DOC("Looks for a project.4coder file in the current directory and tries t
     Variable_Handle load_paths_var = vars_read_key(prj_var, vars_save_string_lit("load_paths"));
     Variable_Handle load_paths_os_var = vars_read_key(load_paths_var, vars_save_string_lit(OS_NAME));
     
+    // NOTE(luis) added this
+    Variable_Handle load_files_var = vars_read_key(prj_var, vars_save_string_lit("load_files"));
+    Variable_Handle load_files_os_var = vars_read_key(load_files_var, vars_save_string_lit(OS_NAME));
+    
     String_ID path_id = vars_save_string_lit("path");
+    String_ID file_id = vars_save_string_lit("file");
     String_ID recursive_id = vars_save_string_lit("recursive");
     String_ID relative_id = vars_save_string_lit("relative");
     
@@ -959,6 +964,34 @@ CUSTOM_DOC("Looks for a project.4coder file in the current directory and tries t
         }
         
         prj_open_files_pattern_filter(app, file_dir, whitelist, blacklist, flags);
+    }
+    
+    // NOTE(luis) added this
+    for (Variable_Handle load_file_var = vars_first_child(load_files_os_var); 
+         !vars_is_nil(load_file_var);
+         load_file_var = vars_next_sibling(load_file_var)) {
+        Variable_Handle file_var = vars_read_key(load_file_var,     file_id);
+        Variable_Handle relative_var = vars_read_key(load_file_var, relative_id);
+        
+        String8 filepath = vars_string_from_var(scratch, file_var);
+        b32 relative = vars_b32_from_var(relative_var);
+        
+        // NOTE these files were specified manually by the user so it makes sense 
+        // that we just wouldn't check the whitelist/blacklist patterns...
+        //if (!prj_match_in_pattern_list(filepath, whitelist)) continue;
+        //if ( prj_match_in_pattern_list(filepath, blacklist)) continue;
+        
+        String8 final_filepath = filepath;
+        if (relative){
+            String8 prj_dir = prj_path_from_project(scratch, prj_var);
+            
+            String8List file_dir_list = {};
+            string_list_push(scratch, &file_dir_list, prj_dir);
+            string_list_push_overlap(scratch, &file_dir_list, '/', filepath);
+            final_filepath = string_list_flatten(scratch, file_dir_list, StringFill_NullTerminate);
+        }
+        
+        create_buffer(app, final_filepath, 0); 
     }
     
     // NOTE(allen): Set Window Title

@@ -1109,6 +1109,154 @@ CUSTOM_DOC("Show code indexes for buffer") {
     }
 }
 
+function String_Const_u8
+print_messagef(Application_Links *app, Arena *arena, char *format, ...){
+    va_list args;
+    va_start(args, format);
+    String_Const_u8 result = push_stringfv(arena, format, args);
+    print_message(app, result);
+    va_end(args);
+    return(result);
+}
+
+#if 0
+internal bool
+is_buffer_included_in_project(Application_Links *app, Buffer_ID buffer) {
+    Scratch_Block scratch(app);
+    Variable_Handle prj_var = vars_read_key(vars_get_root(), vars_save_string_lit("prj_config"));
+    Variable_Handle load_paths_all_oses_var = vars_read_key(prj_var, vars_save_string_lit("load_paths"));
+    Variable_Handle load_paths_var = vars_read_key(load_paths_all_oses_var, vars_save_string_lit(OS_NAME));
+    
+    String_ID path_id = vars_save_string_lit("path");
+    String_ID recursive_id = vars_save_string_lit("recursive");
+    String_ID relative_id = vars_save_string_lit("relative");
+    
+    Variable_Handle whitelist_var = vars_read_key(prj_var, vars_save_string_lit("patterns"));
+    Variable_Handle blacklist_var = vars_read_key(prj_var, vars_save_string_lit("blacklist_patterns"));
+    Prj_Pattern_List whitelist = prj_pattern_list_from_var(scratch, whitelist_var);
+    Prj_Pattern_List blacklist = prj_pattern_list_from_var(scratch, blacklist_var);
+    
+    for (Variable_Handle load_path_var = vars_first_child(load_paths_var);
+         !vars_is_nil(load_path_var);
+         load_path_var = vars_next_sibling(load_path_var)) {
+        
+        Variable_Handle path_var = vars_read_key(load_path_var, path_id);
+        Variable_Handle recursive_var = vars_read_key(load_path_var, recursive_id);
+        Variable_Handle relative_var = vars_read_key(load_path_var, relative_id);
+        
+        String8 path  = vars_string_from_var(scratch, path_var);
+        //b32 recursive = vars_b32_from_var(recursive_var);
+        b32 relative  = vars_b32_from_var(relative_var);
+        
+        String8 file_dir = path;
+        if (relative){
+            String8 prj_dir = prj_path_from_project(scratch, prj_var);
+            
+            String8List file_dir_list = {};
+            string_list_push(scratch, &file_dir_list, prj_dir);
+            string_list_push_overlap(scratch, &file_dir_list, '/', path);
+            string_list_push_overlap(scratch, &file_dir_list, '/', SCu8());
+            file_dir = string_list_flatten(scratch, file_dir_list, StringFill_NullTerminate);
+        }
+        
+        String_Const_u8 buffer_filepath = push_buffer_file_name(app, scratch, buffer); //NOTE this is canonical
+        
+        
+        /*
+        Editing_File *file = imp_get_file(models, buffer_id);
+        String_Const_u8 result = {};
+        if (api_check_buffer(file)){
+            result = push_string_copy(arena, string_from_file_name(&file->canon));
+        }
+        String_Const_u8 system_get_path(Arena* arena, System_Path_Code path_code)
+        String_Const_u8 system_get_canonical(Arena* arena, String_Const_u8 name)
+        */
+    }
+    return false;
+}
+
+CUSTOM_COMMAND_SIG(is_current_buffer_in_project)
+CUSTOM_DOC("Check if current buffer is in project") {
+    View_ID view     = get_active_view(app, Access_Always);
+    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+    
+    Scratch_Block scratch(app);
+    String_Const_u8 buffer_path = push_buffer_file_name(app, scratch, buffer);
+    if (is_buffer_included_in_project(app, buffer)) {
+        print_messagef(app, scratch, "Buffer is project: %.*s", string_expand(buffer_path));
+    } else {
+        print_messagef(app, scratch, "Buffer NOT in project: %.*s", string_expand(buffer_path));
+    }
+}
+#endif
+
+
+CUSTOM_COMMAND_SIG(reload_project)
+CUSTOM_DOC("Reload project.4coder") {
+    Variable_Handle prj_var = vars_read_key(vars_get_root(), vars_save_string_lit("prj_config"));
+    close_all_code(app);
+    if (vars_is_nil(prj_var)){    
+        load_project(app);
+    } else {
+        Scratch_Block scratch(app);
+        //NOTE (copied and pasted this from load_project() (just so we don't have to find and reparse the project file
+        // NOTE(allen): Open All Project Files
+        Variable_Handle load_paths_var = vars_read_key(prj_var, vars_save_string_lit("load_paths"));
+        Variable_Handle load_paths_os_var = vars_read_key(load_paths_var, vars_save_string_lit(OS_NAME));
+        
+        String_ID path_id = vars_save_string_lit("path");
+        String_ID recursive_id = vars_save_string_lit("recursive");
+        String_ID relative_id = vars_save_string_lit("relative");
+        
+        Variable_Handle whitelist_var = vars_read_key(prj_var, vars_save_string_lit("patterns"));
+        Variable_Handle blacklist_var = vars_read_key(prj_var, vars_save_string_lit("blacklist_patterns"));
+        
+        Prj_Pattern_List whitelist = prj_pattern_list_from_var(scratch, whitelist_var);
+        Prj_Pattern_List blacklist = prj_pattern_list_from_var(scratch, blacklist_var);
+        
+        for (Variable_Handle load_path_var = vars_first_child(load_paths_os_var);
+             !vars_is_nil(load_path_var);
+             load_path_var = vars_next_sibling(load_path_var)){
+            Variable_Handle path_var = vars_read_key(load_path_var, path_id);
+            Variable_Handle recursive_var = vars_read_key(load_path_var, recursive_id);
+            Variable_Handle relative_var = vars_read_key(load_path_var, relative_id);
+            
+            String8 path = vars_string_from_var(scratch, path_var);
+            b32 recursive = vars_b32_from_var(recursive_var);
+            b32 relative = vars_b32_from_var(relative_var);
+            
+            
+            u32 flags = 0;
+            if (recursive){
+                flags |= PrjOpenFileFlag_Recursive;
+            }
+            
+            String8 file_dir = path;
+            if (relative){
+                String8 prj_dir = prj_path_from_project(scratch, prj_var);
+                
+                String8List file_dir_list = {};
+                string_list_push(scratch, &file_dir_list, prj_dir);
+                string_list_push_overlap(scratch, &file_dir_list, '/', path);
+                string_list_push_overlap(scratch, &file_dir_list, '/', SCu8());
+                file_dir = string_list_flatten(scratch, file_dir_list, StringFill_NullTerminate);
+            }
+            
+            prj_open_files_pattern_filter(app, file_dir, whitelist, blacklist, flags);
+        }
+        
+        // NOTE(allen): Set Window Title
+        Variable_Handle proj_name_var = vars_read_key(prj_var, vars_save_string_lit("project_name"));
+        String_ID proj_name_id = vars_string_id_from_var(proj_name_var);
+        if (proj_name_id != 0){
+            String8 proj_name = vars_read_string(scratch, proj_name_id);
+            String8 title = push_u8_stringf(scratch, "4coder project: %.*s", string_expand(proj_name));
+            set_window_title(app, title);
+        }
+    }
+    
+}
+
 
 
 CUSTOM_COMMAND_SIG(luis_list_notes_all_buffers)
@@ -1123,7 +1271,7 @@ CUSTOM_DOC("Show code indexes for all buffer") {
     code_index_lock();
     for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always); buffer; buffer = get_buffer_next(app, buffer, Access_Always)) {  
         Code_Index_File *file = code_index_get_file(buffer);
-        if(!file) continue; 
+        if(!file) continue;
         
         Lister_Prealloced_String status  = lister_prealloced(push_buffer_base_name(app, lister.lister.current->arena, buffer));
         for(i32 note_index = 0; note_index < file->note_array.count; note_index += 1) {
@@ -1296,15 +1444,7 @@ struct Code_Variable {
     Token name_token;
 };
 
-function String_Const_u8
-print_messagef(Application_Links *app, Arena *arena, char *format, ...){
-    va_list args;
-    va_start(args, format);
-    String_Const_u8 result = push_stringfv(arena, format, args);
-    print_message(app, result);
-    va_end(args);
-    return(result);
-}
+
 
 static String_Const_u8
 get_type_keyword_string(Token *token) {
