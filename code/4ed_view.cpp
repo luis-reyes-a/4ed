@@ -473,9 +473,14 @@ view_set_file(Thread_Context *tctx, Models *models, View *view, Editing_File *fi
     }
     
     if (old_file != 0){
-        file_touch(&models->working_set, old_file);
+        file_touch(&models->working_set, old_file); //NOTE (luis) removed this
         file_edit_positions_push(old_file, view_get_edit_pos(view));
     }
+    
+    //NOTE (luis) added this because it's weird that when you call buffer_get_next() the most recently used file isn't the one you're currently one....
+    //if (file) {
+        //file_touch(&models->working_set, file); 
+    //}
     
     view->file = file;
     

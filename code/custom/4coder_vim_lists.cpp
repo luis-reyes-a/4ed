@@ -575,23 +575,127 @@ CUSTOM_DOC("Opens an interactive list of all registered themes.")
 	if(result != 0){ active_color_table = *result; }
 }
 
+internal void
+vim_navigate_and_peek_buffer_entry(Application_Links *app, View_ID view, Lister *lister, i32 delta) {
+    //lister__navigate__default
+    i32 new_index = lister->item_index + delta;
+    if (new_index < 0 && lister->item_index == 0){
+        lister->item_index = lister->filtered.count - 1;
+    } else if (new_index >= lister->filtered.count &&
+             lister->item_index == lister->filtered.count - 1) {
+        lister->item_index = 0;
+    } else {
+        lister->item_index = clamp(0, new_index, lister->filtered.count - 1);
+    }
+    lister->set_vertical_focus_to_item = true;
+    lister_update_selection_values(lister);
+    
+    
+    if (in_range(0, lister->raw_item_index, lister->options.count)) {
+        Buffer_ID buffer = (Buffer_ID)PtrAsInt(lister_get_user_data(lister, lister->raw_item_index));
+        Set_Buffer_Flag flags = SetBuffer_KeepOriginalGUI;
+        view_set_buffer(app, view, buffer, flags);
+        
+        //better to just keep the cursor where we had left it off previously for familiarity
+        //Buffer_Seek seek = seek_pos(0);
+        //view_set_cursor_and_preferred_x(app, view, seek);
+        //view_set_mark(app, view, seek);
+    }
+    
+}
+
+function void
+luis_generate_all_buffers_list_for_vim_switch_lister(Application_Links *app, Lister *lister){
+    lister_begin_new_item_set(app, lister);
+    
+    /*
+    Buffer_ID viewed_buffers[16];
+    i32 viewed_buffer_count = 0;
+    
+    // List currently viewed buffers
+    for (View_ID view = get_view_next(app, 0, Access_Always);
+         view != 0;
+         view = get_view_next(app, view, Access_Always)){
+        Buffer_ID new_buffer_id = view_get_buffer(app, view, Access_Always);
+        for (i32 i = 0; i < viewed_buffer_count; i += 1){
+            if (new_buffer_id == viewed_buffers[i]){
+                goto skip0;
+            }
+        }
+        viewed_buffers[viewed_buffer_count++] = new_buffer_id;
+        skip0:;
+    } */
+    
+    // Regular Buffers
+    for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
+         buffer != 0;
+         buffer = get_buffer_next(app, buffer, Access_Always)){
+        
+        /*for (i32 i = 0; i < viewed_buffer_count; i += 1){
+            if (buffer == viewed_buffers[i]){
+                goto skip1;
+            }
+        } */
+        
+        if (!buffer_has_name_with_star(app, buffer)){
+            generate_all_buffers_list__output_buffer(app, lister, buffer);
+        }
+        //skip1:;
+    }
+    
+    // Buffers Starting with *
+    for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
+         buffer != 0;
+         buffer = get_buffer_next(app, buffer, Access_Always)){
+        /* for (i32 i = 0; i < viewed_buffer_count; i += 1){
+            if (buffer == viewed_buffers[i]){
+                goto skip2;
+            }
+        } */
+        if (buffer_has_name_with_star(app, buffer)){
+            generate_all_buffers_list__output_buffer(app, lister, buffer);
+        }
+        //skip2:;
+    }
+    
+    // Buffers That Are Open in Views
+    //for (i32 i = 0; i < viewed_buffer_count; i += 1){
+        //generate_all_buffers_list__output_buffer(app, lister, viewed_buffers[i]);
+    //}
+}
+
 CUSTOM_UI_COMMAND_SIG(vim_switch_lister)
 CUSTOM_DOC("Opens an interactive list of all loaded buffers.")
 {
     defer { minibar_string.size = 0; };
 	Lister_Handlers handlers = lister_get_default_handlers();
     handlers.write_character = vim_lister__write_character;
-	handlers.refresh = generate_all_buffers_list;
+	handlers.refresh = luis_generate_all_buffers_list_for_vim_switch_lister;
 	handlers.backspace = vim_lister__backspace;
+    //handlers.navigate = vim_lister__navigate__default;
+    handlers.navigate = vim_navigate_and_peek_buffer_entry; //NOTE (luis) added this
 	Scratch_Block scratch(app);
     minibar_string.size = 0;
+    
+    View_ID init_view = get_active_view(app, Access_ReadVisible);
+    luis_view_clear_flags(app, init_view, VIEW_NOTEPAD_MODE_MARK_SET);
+    Buffer_ID init_buffer = view_get_buffer(app, init_view, Access_ReadVisible);
+    i64 init_cursor = view_get_cursor_pos(app, init_view);
+    Buffer_Scroll init_view_scroll = view_get_buffer_scroll (app, init_view);
+    
 	//vim_reset_bottom_text();
 	//string_append(&vim_bot_text, string_u8_litexpr("Switch:"));
-	Lister_Result l_result = vim_run_lister_with_refresh_handler(app, scratch, string_u8_litexpr("Switch:"), handlers);
+    
+	Lister_Result l_result = vim_run_lister_with_refresh_handler(app, scratch, string_u8_litexpr("Switch:"), handlers, true);
 	Buffer_ID buffer = 0;
 	if (!l_result.canceled){
 		buffer = (Buffer_ID)(PtrAsInt(l_result.user_data));
-	}
+	} else {
+        //return to initial place
+        view_set_buffer(app, init_view, init_buffer, 0);
+        view_set_cursor_and_preferred_x(app, init_view, seek_pos(init_cursor));
+        view_set_buffer_scroll(app, init_view, init_view_scroll, SetBufferScroll_SnapCursorIntoView);
+    }
 	if (buffer != 0){
 		View_ID view = get_this_ctx_view(app, Access_Always);
 		view_set_buffer(app, view, buffer, 0);
@@ -774,6 +878,7 @@ CUSTOM_DOC("Interactively open a file out of the file system.") {
         handlers.refresh = luis_generate_all_files_and_buffers_list;
         handlers.write_character = vim_lister__write_character__file_path;
         handlers.backspace = vim_lister_file__backspace;
+        handlers.navigate = vim_lister__navigate__default;
         
         //minibar_string.size = 0;
         //vim_reset_bottom_text(); //TODO make string zero basically

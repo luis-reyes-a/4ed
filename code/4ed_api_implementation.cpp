@@ -1689,6 +1689,8 @@ view_set_buffer(Application_Links *app, View_ID view_id, Buffer_ID buffer_id, Se
     return(result);
 }
 
+
+
 api(custom) function b32
 view_push_context(Application_Links *app, View_ID view_id, View_Context *ctx){
     Models *models = (Models*)app->cmd_context;

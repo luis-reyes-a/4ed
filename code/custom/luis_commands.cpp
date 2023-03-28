@@ -18,6 +18,30 @@ CUSTOM_DOC("Opens file explorer in hot directory") {
     
 }
 
+CUSTOM_COMMAND_SIG(open_file_in_visual_studio)
+CUSTOM_DOC("Open current file in visual studio") {
+    Scratch_Block scratch(app);
+    
+    View_ID view = get_active_view(app, Access_Always);
+    Buffer_ID buffer_id = view_get_buffer(app, view, Access_Always);
+    i64 linenum = get_line_number_from_pos(app, view_get_buffer(app, view, Access_Always), view_get_cursor_pos(app, view));
+    
+    String_Const_u8 hot = get_directory_for_buffer(app, scratch, buffer_id);
+    if (hot.size == 0) {
+        hot = push_hot_directory(app, scratch); //use current hot directory if looking at *scratch* for example
+    }
+    
+    String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer_id);
+    String_Const_u8 command = push_stringf(scratch, "devenv /edit %.*s", string_expand(file_name));
+    
+    if (exec_system_command(app, 0, buffer_identifier(0), hot, command, 0)) {
+        String_Const_u8 linenum_string = string_from_integer(scratch, linenum, 10);
+        if (linenum_string.size > 0) {
+            clipboard_post(0, linenum_string);
+        }
+    }
+}
+
 CUSTOM_COMMAND_SIG(luis_escape)
 CUSTOM_DOC("escape key")
 {
@@ -1357,6 +1381,8 @@ CUSTOM_DOC("Show code indexes for all buffer") {
         //jump_to_location(app, view, result.buffer, result.pos);
     //}
 }
+
+
 
 CUSTOM_COMMAND_SIG(luis_list_functions_all_buffers)
 CUSTOM_DOC("Show code indexes for all buffer") {

@@ -812,15 +812,21 @@ vim_lister__navigate__default(Application_Links *app, View_ID view, Lister *list
 
 
 function Lister_Result
-vim_run_lister_with_refresh_handler(Application_Links *app, Arena *arena, String_Const_u8 query, Lister_Handlers handlers){
+vim_run_lister_with_refresh_handler(Application_Links *app, Arena *arena, String_Const_u8 query, Lister_Handlers handlers, 
+                                    bool is_switch_lister_move_right = false){
 	Lister_Result result = {};
 	if(handlers.refresh != 0){
 		Lister_Block lister(app, arena);
 		lister_set_query(lister, query);
 		lister_set_handlers(lister, &handlers);
-        lister.lister.current->handlers.navigate = vim_lister__navigate__default;
                 
 		handlers.refresh(app, lister);
+        
+        //if (is_switch_lister_move_right) {
+            //View_ID view = get_this_ctx_view(app, Access_Always);
+            //handlers.navigate(app, view, lister, 1);
+        //}
+        
 		result = vim_run_lister(app, lister);
 	}
 	else{
@@ -839,6 +845,7 @@ vim_get_file_name_from_user(Application_Links *app, Arena *arena, String_Const_u
 	handlers.refresh = generate_hot_directory_file_list;
 	handlers.write_character = vim_lister__write_character__file_path;
 	handlers.backspace = vim_lister_file__backspace;
+    handlers.navigate = vim_lister__navigate__default;
     
     //minibar_string.size = 0;
 	//vim_reset_bottom_text(); //TODO make string zero basically

@@ -2,7 +2,7 @@
 #define command_id(c) (fcoder_metacmd_ID_##c)
 #define command_metadata(c) (&fcoder_metacmd_table[command_id(c)])
 #define command_metadata_by_id(id) (&fcoder_metacmd_table[id])
-#define command_one_past_last_id 325
+#define command_one_past_last_id 326
 #if defined(CUSTOM_COMMAND_SIG)
 #define PROC_LINKS(x,y) x
 #else
@@ -203,6 +203,7 @@ CUSTOM_COMMAND_SIG(music_stop);
 CUSTOM_COMMAND_SIG(open_all_code);
 CUSTOM_COMMAND_SIG(open_all_code_recursive);
 CUSTOM_COMMAND_SIG(open_file_in_quotes);
+CUSTOM_COMMAND_SIG(open_file_in_visual_studio);
 CUSTOM_COMMAND_SIG(open_in_other);
 CUSTOM_COMMAND_SIG(open_long_braces);
 CUSTOM_COMMAND_SIG(open_long_braces_break);
@@ -346,7 +347,7 @@ char *source_name;
 i32 source_name_len;
 i32 line_number;
 };
-static Command_Metadata fcoder_metacmd_table[325] = {
+static Command_Metadata fcoder_metacmd_table[326] = {
 { PROC_LINKS(allow_mouse, 0), false, "allow_mouse", 11, "Shows the mouse and causes all mouse input to be processed normally.", 68, "D:\\work\\4ed\\code\\custom\\4coder_default_framework.cpp", 52, 481 },
 { PROC_LINKS(auto_indent_line_at_cursor, 0), false, "auto_indent_line_at_cursor", 26, "Auto-indents the line on which the cursor sits.", 47, "D:\\work\\4ed\\code\\custom\\4coder_auto_indent.cpp", 46, 466 },
 { PROC_LINKS(auto_indent_range, 0), false, "auto_indent_range", 17, "Auto-indents the range between the cursor and the mark.", 55, "D:\\work\\4ed\\code\\custom\\4coder_auto_indent.cpp", 46, 476 },
@@ -451,54 +452,54 @@ static Command_Metadata fcoder_metacmd_table[325] = {
 { PROC_LINKS(load_theme_current_buffer, 0), false, "load_theme_current_buffer", 25, "Parse the current buffer as a theme file and add the theme to the theme list. If the buffer has a .4coder postfix in it's name, it is removed when the name is saved.", 165, "D:\\work\\4ed\\code\\custom\\4coder_config.cpp", 41, 1611 },
 { PROC_LINKS(load_themes_default_folder, 0), false, "load_themes_default_folder", 26, "Loads all the theme files in the default theme folder.", 54, "D:\\work\\4ed\\code\\custom\\4coder_default_framework.cpp", 52, 535 },
 { PROC_LINKS(load_themes_hot_directory, 0), false, "load_themes_hot_directory", 25, "Loads all the theme files in the current hot directory.", 55, "D:\\work\\4ed\\code\\custom\\4coder_default_framework.cpp", 52, 554 },
-{ PROC_LINKS(luis_add_space, 0), false, "luis_add_space", 14, "add space to line start", 23, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 198 },
-{ PROC_LINKS(luis_add_tab, 0), false, "luis_add_tab", 12, "add tab to line start", 21, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 166 },
-{ PROC_LINKS(luis_adjust_horizontal_view_toggle, 0), false, "luis_adjust_horizontal_view_toggle", 34, "Moves view horizontally to cursor x pos or back to leftmost of screen", 69, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 514 },
-{ PROC_LINKS(luis_build, 0), false, "luis_build", 10, "build", 5, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 852 },
+{ PROC_LINKS(luis_add_space, 0), false, "luis_add_space", 14, "add space to line start", 23, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 222 },
+{ PROC_LINKS(luis_add_tab, 0), false, "luis_add_tab", 12, "add tab to line start", 21, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 190 },
+{ PROC_LINKS(luis_adjust_horizontal_view_toggle, 0), false, "luis_adjust_horizontal_view_toggle", 34, "Moves view horizontally to cursor x pos or back to leftmost of screen", 69, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 538 },
+{ PROC_LINKS(luis_build, 0), false, "luis_build", 10, "build", 5, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 876 },
 { PROC_LINKS(luis_center_view_top, 0), false, "luis_center_view_top", 20, "Centers the view vertically on the line on which the cursor sits.", 65, "D:\\work\\4ed\\code\\custom\\luis_custom_layer.h", 43, 325 },
-{ PROC_LINKS(luis_close_panel, 0), false, "luis_close_panel", 16, "Close panel. Peek first.", 24, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 641 },
-{ PROC_LINKS(luis_code_index_next, 0), false, "luis_code_index_next", 20, "next code index", 15, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 2157 },
-{ PROC_LINKS(luis_code_index_prev, 0), false, "luis_code_index_prev", 20, "prev code index", 15, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 2176 },
-{ PROC_LINKS(luis_cut_line, 0), false, "luis_cut_line", 13, "Emacs-style kill line", 21, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 334 },
-{ PROC_LINKS(luis_end, 0), false, "luis_end", 8, "go end of visual line", 21, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 602 },
-{ PROC_LINKS(luis_escape, 0), false, "luis_escape", 11, "escape key", 10, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 21 },
-{ PROC_LINKS(luis_fsearch, 0), false, "luis_fsearch", 12, "search forwards", 15, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 2527 },
-{ PROC_LINKS(luis_goto_next_jump, 0), false, "luis_goto_next_jump", 19, "If a buffer containing jump locations has been locked in, goes to the next jump in the buffer, skipping sub jump locations.", 123, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 822 },
-{ PROC_LINKS(luis_goto_prev_jump, 0), false, "luis_goto_prev_jump", 19, "If a buffer containing jump locations has been locked in, goes to the previous jump in the buffer, skipping sub jump locations.", 127, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 838 },
-{ PROC_LINKS(luis_home, 0), false, "luis_home", 9, "go start of visual line", 23, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 51 },
-{ PROC_LINKS(luis_horizontal_mouse_wheel_scroll, 0), false, "luis_horizontal_mouse_wheel_scroll", 34, "Reads the scroll wheel value from the mouse state and scrolls accordingly.", 74, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 538 },
-{ PROC_LINKS(luis_indent_range, 0), false, "luis_indent_range", 17, "indent_range", 12, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 151 },
-{ PROC_LINKS(luis_interactive_open_or_new, 0), false, "luis_interactive_open_or_new", 28, "open in new in same tab", 23, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 37 },
-{ PROC_LINKS(luis_left_word, 0), false, "luis_left_word", 14, "move left", 9, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 59 },
-{ PROC_LINKS(luis_list_functions_all_buffers, 0), false, "luis_list_functions_all_buffers", 31, "Show code indexes for all buffer", 32, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 1361 },
-{ PROC_LINKS(luis_list_nests_this_buffer, 0), false, "luis_list_nests_this_buffer", 27, "Show code nests for this buffer", 31, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 946 },
-{ PROC_LINKS(luis_list_notes_all_buffers, 0), false, "luis_list_notes_all_buffers", 27, "Show code indexes for all buffer", 32, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 1262 },
-{ PROC_LINKS(luis_list_notes_this_buffer, 0), false, "luis_list_notes_this_buffer", 27, "Show code indexes for buffer", 28, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 1014 },
-{ PROC_LINKS(luis_matching_file_cpp, 0), false, "luis_matching_file_cpp", 22, "If the current file is a *.cpp or *.h, attempts to open the corresponding *.h or *.cpp file in the other view.", 110, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 713 },
-{ PROC_LINKS(luis_matching_file_cpp_same_buffer, 0), false, "luis_matching_file_cpp_same_buffer", 34, "If the current file is a *.cpp or *.h, attempts to open the corresponding *.h or *.cpp file in the other view.", 110, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 703 },
-{ PROC_LINKS(luis_multiline_comment_toggle, 0), false, "luis_multiline_comment_toggle", 29, "Deletes all whitespace at cursor, going backwards", 49, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 553 },
-{ PROC_LINKS(luis_print_scope_variables, 0), false, "luis_print_scope_variables", 26, "print scope variables", 21, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 1501 },
-{ PROC_LINKS(luis_remove_space, 0), false, "luis_remove_space", 17, "remove space from line start", 28, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 271 },
-{ PROC_LINKS(luis_remove_tab, 0), false, "luis_remove_tab", 15, "remove tab from line start", 26, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 222 },
-{ PROC_LINKS(luis_return, 0), false, "luis_return", 11, "If the buffer in the active view is writable, inserts a character, otherwise performs goto_jump_at_cursor.", 106, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 727 },
-{ PROC_LINKS(luis_right_word, 0), false, "luis_right_word", 15, "move right", 10, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 66 },
-{ PROC_LINKS(luis_rsearch, 0), false, "luis_rsearch", 12, "search backwards", 16, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 2534 },
-{ PROC_LINKS(luis_scope_braces, 0), false, "luis_scope_braces", 17, "writes {}", 9, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 102 },
-{ PROC_LINKS(luis_select_line, 0), false, "luis_select_line", 16, "go end of visual line", 21, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 325 },
-{ PROC_LINKS(luis_select_surrounding_scope, 0), false, "luis_select_surrounding_scope", 29, "select surrounding scope", 24, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 369 },
-{ PROC_LINKS(luis_select_surrounding_scope_maximal, 0), false, "luis_select_surrounding_scope_maximal", 37, "select surrounding scope", 24, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 476 },
-{ PROC_LINKS(luis_set_mark, 0), false, "luis_set_mark", 13, "set mark", 8, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 80 },
-{ PROC_LINKS(luis_show_search_panel, 0), false, "luis_show_search_panel", 22, "Enter Command Mode", 18, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 2269 },
+{ PROC_LINKS(luis_close_panel, 0), false, "luis_close_panel", 16, "Close panel. Peek first.", 24, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 665 },
+{ PROC_LINKS(luis_code_index_next, 0), false, "luis_code_index_next", 20, "next code index", 15, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 2183 },
+{ PROC_LINKS(luis_code_index_prev, 0), false, "luis_code_index_prev", 20, "prev code index", 15, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 2202 },
+{ PROC_LINKS(luis_cut_line, 0), false, "luis_cut_line", 13, "Emacs-style kill line", 21, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 358 },
+{ PROC_LINKS(luis_end, 0), false, "luis_end", 8, "go end of visual line", 21, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 626 },
+{ PROC_LINKS(luis_escape, 0), false, "luis_escape", 11, "escape key", 10, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 45 },
+{ PROC_LINKS(luis_fsearch, 0), false, "luis_fsearch", 12, "search forwards", 15, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 2553 },
+{ PROC_LINKS(luis_goto_next_jump, 0), false, "luis_goto_next_jump", 19, "If a buffer containing jump locations has been locked in, goes to the next jump in the buffer, skipping sub jump locations.", 123, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 846 },
+{ PROC_LINKS(luis_goto_prev_jump, 0), false, "luis_goto_prev_jump", 19, "If a buffer containing jump locations has been locked in, goes to the previous jump in the buffer, skipping sub jump locations.", 127, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 862 },
+{ PROC_LINKS(luis_home, 0), false, "luis_home", 9, "go start of visual line", 23, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 75 },
+{ PROC_LINKS(luis_horizontal_mouse_wheel_scroll, 0), false, "luis_horizontal_mouse_wheel_scroll", 34, "Reads the scroll wheel value from the mouse state and scrolls accordingly.", 74, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 562 },
+{ PROC_LINKS(luis_indent_range, 0), false, "luis_indent_range", 17, "indent_range", 12, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 175 },
+{ PROC_LINKS(luis_interactive_open_or_new, 0), false, "luis_interactive_open_or_new", 28, "open in new in same tab", 23, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 61 },
+{ PROC_LINKS(luis_left_word, 0), false, "luis_left_word", 14, "move left", 9, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 83 },
+{ PROC_LINKS(luis_list_functions_all_buffers, 0), false, "luis_list_functions_all_buffers", 31, "Show code indexes for all buffer", 32, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 1387 },
+{ PROC_LINKS(luis_list_nests_this_buffer, 0), false, "luis_list_nests_this_buffer", 27, "Show code nests for this buffer", 31, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 970 },
+{ PROC_LINKS(luis_list_notes_all_buffers, 0), false, "luis_list_notes_all_buffers", 27, "Show code indexes for all buffer", 32, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 1286 },
+{ PROC_LINKS(luis_list_notes_this_buffer, 0), false, "luis_list_notes_this_buffer", 27, "Show code indexes for buffer", 28, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 1038 },
+{ PROC_LINKS(luis_matching_file_cpp, 0), false, "luis_matching_file_cpp", 22, "If the current file is a *.cpp or *.h, attempts to open the corresponding *.h or *.cpp file in the other view.", 110, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 737 },
+{ PROC_LINKS(luis_matching_file_cpp_same_buffer, 0), false, "luis_matching_file_cpp_same_buffer", 34, "If the current file is a *.cpp or *.h, attempts to open the corresponding *.h or *.cpp file in the other view.", 110, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 727 },
+{ PROC_LINKS(luis_multiline_comment_toggle, 0), false, "luis_multiline_comment_toggle", 29, "Deletes all whitespace at cursor, going backwards", 49, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 577 },
+{ PROC_LINKS(luis_print_scope_variables, 0), false, "luis_print_scope_variables", 26, "print scope variables", 21, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 1527 },
+{ PROC_LINKS(luis_remove_space, 0), false, "luis_remove_space", 17, "remove space from line start", 28, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 295 },
+{ PROC_LINKS(luis_remove_tab, 0), false, "luis_remove_tab", 15, "remove tab from line start", 26, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 246 },
+{ PROC_LINKS(luis_return, 0), false, "luis_return", 11, "If the buffer in the active view is writable, inserts a character, otherwise performs goto_jump_at_cursor.", 106, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 751 },
+{ PROC_LINKS(luis_right_word, 0), false, "luis_right_word", 15, "move right", 10, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 90 },
+{ PROC_LINKS(luis_rsearch, 0), false, "luis_rsearch", 12, "search backwards", 16, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 2560 },
+{ PROC_LINKS(luis_scope_braces, 0), false, "luis_scope_braces", 17, "writes {}", 9, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 126 },
+{ PROC_LINKS(luis_select_line, 0), false, "luis_select_line", 16, "go end of visual line", 21, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 349 },
+{ PROC_LINKS(luis_select_surrounding_scope, 0), false, "luis_select_surrounding_scope", 29, "select surrounding scope", 24, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 393 },
+{ PROC_LINKS(luis_select_surrounding_scope_maximal, 0), false, "luis_select_surrounding_scope_maximal", 37, "select surrounding scope", 24, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 500 },
+{ PROC_LINKS(luis_set_mark, 0), false, "luis_set_mark", 13, "set mark", 8, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 104 },
+{ PROC_LINKS(luis_show_search_panel, 0), false, "luis_show_search_panel", 22, "Enter Command Mode", 18, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 2295 },
 { PROC_LINKS(luis_startup, 0), false, "luis_startup", 12, "Default command for responding to a startup event", 49, "D:\\work\\4ed\\code\\custom\\luis_hooks.cpp", 38, 3 },
-{ PROC_LINKS(luis_toggle_modal_mode, 0), false, "luis_toggle_modal_mode", 22, "Toggles modal mode", 18, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 27 },
+{ PROC_LINKS(luis_toggle_modal_mode, 0), false, "luis_toggle_modal_mode", 22, "Toggles modal mode", 18, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 51 },
 { PROC_LINKS(luis_view_input_handler, 0), false, "luis_view_input_handler", 23, "Input consumption loop for default view behavior", 48, "D:\\work\\4ed\\code\\custom\\luis_hooks.cpp", 38, 37 },
-{ PROC_LINKS(luis_view_peek_as_split_window, 0), false, "luis_view_peek_as_split_window", 30, "view peek buffer in split window", 32, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 394 },
-{ PROC_LINKS(luis_view_peek_in_parent_window, 0), false, "luis_view_peek_in_parent_window", 31, "view peek buffer in split window", 32, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 447 },
-{ PROC_LINKS(luis_vim_string_matches, 0), true, "luis_vim_string_matches", 23, "Enter Command Mode", 18, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 2237 },
-{ PROC_LINKS(luis_write_newline, 0), false, "luis_write_newline", 18, "", 0, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 503 },
-{ PROC_LINKS(luis_write_pointer_arrow, 0), false, "luis_write_pointer_arrow", 24, "", 0, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 499 },
-{ PROC_LINKS(luis_write_tab, 0), false, "luis_write_tab", 14, "", 0, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 507 },
-{ PROC_LINKS(luis_write_underscore, 0), false, "luis_write_underscore", 21, "", 0, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 495 },
+{ PROC_LINKS(luis_view_peek_as_split_window, 0), false, "luis_view_peek_as_split_window", 30, "view peek buffer in split window", 32, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 418 },
+{ PROC_LINKS(luis_view_peek_in_parent_window, 0), false, "luis_view_peek_in_parent_window", 31, "view peek buffer in split window", 32, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 471 },
+{ PROC_LINKS(luis_vim_string_matches, 0), true, "luis_vim_string_matches", 23, "Enter Command Mode", 18, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 2263 },
+{ PROC_LINKS(luis_write_newline, 0), false, "luis_write_newline", 18, "", 0, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 527 },
+{ PROC_LINKS(luis_write_pointer_arrow, 0), false, "luis_write_pointer_arrow", 24, "", 0, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 523 },
+{ PROC_LINKS(luis_write_tab, 0), false, "luis_write_tab", 14, "", 0, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 531 },
+{ PROC_LINKS(luis_write_underscore, 0), false, "luis_write_underscore", 21, "", 0, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 519 },
 { PROC_LINKS(make_directory_query, 0), false, "make_directory_query", 20, "Queries the user for a name and creates a new directory with the given name.", 76, "D:\\work\\4ed\\code\\custom\\4coder_base_commands.cpp", 48, 1539 },
 { PROC_LINKS(miblo_decrement_basic, 0), false, "miblo_decrement_basic", 21, "Decrement an integer under the cursor by one.", 45, "D:\\work\\4ed\\code\\custom\\4coder_miblo_numbers.cpp", 48, 44 },
 { PROC_LINKS(miblo_decrement_time_stamp, 0), false, "miblo_decrement_time_stamp", 26, "Decrement a time stamp under the cursor by one second. (format [m]m:ss or h:mm:ss", 81, "D:\\work\\4ed\\code\\custom\\4coder_miblo_numbers.cpp", 48, 237 },
@@ -541,6 +542,7 @@ static Command_Metadata fcoder_metacmd_table[325] = {
 { PROC_LINKS(open_all_code, 0), false, "open_all_code", 13, "Open all code in the current directory. File types are determined by extensions. An extension is considered code based on the extensions specified in 4coder.config.", 164, "D:\\work\\4ed\\code\\custom\\4coder_project_commands.cpp", 51, 838 },
 { PROC_LINKS(open_all_code_recursive, 0), false, "open_all_code_recursive", 23, "Works as open_all_code but also runs in all subdirectories.", 59, "D:\\work\\4ed\\code\\custom\\4coder_project_commands.cpp", 51, 847 },
 { PROC_LINKS(open_file_in_quotes, 0), false, "open_file_in_quotes", 19, "Reads a filename from surrounding '\"' characters and attempts to open the corresponding file.", 94, "D:\\work\\4ed\\code\\custom\\4coder_base_commands.cpp", 48, 1620 },
+{ PROC_LINKS(open_file_in_visual_studio, 0), false, "open_file_in_visual_studio", 26, "Open current file in visual studio", 34, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 21 },
 { PROC_LINKS(open_in_other, 0), false, "open_in_other", 13, "Interactively opens a file in the other panel.", 46, "D:\\work\\4ed\\code\\custom\\4coder_base_commands.cpp", 48, 2103 },
 { PROC_LINKS(open_long_braces, 0), false, "open_long_braces", 16, "At the cursor, insert a '{' and '}' separated by a blank line.", 62, "D:\\work\\4ed\\code\\custom\\4coder_combined_write_commands.cpp", 58, 46 },
 { PROC_LINKS(open_long_braces_break, 0), false, "open_long_braces_break", 22, "At the cursor, insert a '{' and '}break;' separated by a blank line.", 68, "D:\\work\\4ed\\code\\custom\\4coder_combined_write_commands.cpp", 58, 62 },
@@ -586,7 +588,7 @@ static Command_Metadata fcoder_metacmd_table[325] = {
 { PROC_LINKS(quick_swap_buffer, 0), false, "quick_swap_buffer", 17, "Change to the most recently used buffer in this view - or to the top of the buffer stack if the most recent doesn't exist anymore", 129, "D:\\work\\4ed\\code\\custom\\4coder_base_commands.cpp", 48, 1750 },
 { PROC_LINKS(redo, 0), false, "redo", 4, "Advances forwards through the undo history of the current buffer.", 65, "D:\\work\\4ed\\code\\custom\\4coder_base_commands.cpp", 48, 1930 },
 { PROC_LINKS(redo_all_buffers, 0), false, "redo_all_buffers", 16, "Advances forward through the undo history in the buffer containing the most recent regular edit.", 96, "D:\\work\\4ed\\code\\custom\\4coder_base_commands.cpp", 48, 2027 },
-{ PROC_LINKS(reload_project, 0), false, "reload_project", 14, "Reload project.4coder", 21, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 1194 },
+{ PROC_LINKS(reload_project, 0), false, "reload_project", 14, "Reload project.4coder", 21, "D:\\work\\4ed\\code\\custom\\luis_commands.cpp", 41, 1218 },
 { PROC_LINKS(rename_file_query, 0), false, "rename_file_query", 17, "Queries the user for a new name and renames the file of the current buffer, altering the buffer's name too.", 107, "D:\\work\\4ed\\code\\custom\\4coder_base_commands.cpp", 48, 1504 },
 { PROC_LINKS(reopen, 0), false, "reopen", 6, "Reopen the current buffer from the hard drive.", 46, "D:\\work\\4ed\\code\\custom\\4coder_base_commands.cpp", 48, 1788 },
 { PROC_LINKS(replace_in_all_buffers, 0), false, "replace_in_all_buffers", 22, "Queries the user for a needle and string. Replaces all occurences of needle with string in all editable buffers.", 112, "D:\\work\\4ed\\code\\custom\\4coder_base_commands.cpp", 48, 1240 },
@@ -656,10 +658,10 @@ static Command_Metadata fcoder_metacmd_table[325] = {
 { PROC_LINKS(view_jump_list_with_lister, 0), false, "view_jump_list_with_lister", 26, "When executed on a buffer with jumps, creates a persistent lister for all the jumps", 83, "D:\\work\\4ed\\code\\custom\\4coder_jump_lister.cpp", 46, 59 },
 { PROC_LINKS(vim_command_mode, 0), true, "vim_command_mode", 16, "Enter Command Mode", 18, "D:\\work\\4ed\\code\\custom\\4coder_vim_lists.cpp", 44, 50 },
 { PROC_LINKS(vim_interactive_open_or_new, 0), true, "vim_interactive_open_or_new", 27, "Interactively open a file out of the file system.", 49, "D:\\work\\4ed\\code\\custom\\4coder_vim_lists.cpp", 44, 200 },
-{ PROC_LINKS(vim_list_all_functions_current_buffer_lister, 0), true, "vim_list_all_functions_current_buffer_lister", 44, "Creates a lister of locations that look like function definitions and declarations in the buffer.", 97, "D:\\work\\4ed\\code\\custom\\4coder_vim_lists.cpp", 44, 865 },
-{ PROC_LINKS(vim_proj_cmd_lister, 0), true, "vim_proj_cmd_lister", 19, "Opens an interactive list of all project commands.", 50, "D:\\work\\4ed\\code\\custom\\4coder_vim_lists.cpp", 44, 884 },
-{ PROC_LINKS(vim_switch_file_or_buffer, 0), true, "vim_switch_file_or_buffer", 25, "Interactively open a file out of the file system.", 49, "D:\\work\\4ed\\code\\custom\\4coder_vim_lists.cpp", 44, 742 },
-{ PROC_LINKS(vim_switch_lister, 0), true, "vim_switch_lister", 17, "Opens an interactive list of all loaded buffers.", 48, "D:\\work\\4ed\\code\\custom\\4coder_vim_lists.cpp", 44, 578 },
+{ PROC_LINKS(vim_list_all_functions_current_buffer_lister, 0), true, "vim_list_all_functions_current_buffer_lister", 44, "Creates a lister of locations that look like function definitions and declarations in the buffer.", 97, "D:\\work\\4ed\\code\\custom\\4coder_vim_lists.cpp", 44, 970 },
+{ PROC_LINKS(vim_proj_cmd_lister, 0), true, "vim_proj_cmd_lister", 19, "Opens an interactive list of all project commands.", 50, "D:\\work\\4ed\\code\\custom\\4coder_vim_lists.cpp", 44, 989 },
+{ PROC_LINKS(vim_switch_file_or_buffer, 0), true, "vim_switch_file_or_buffer", 25, "Interactively open a file out of the file system.", 49, "D:\\work\\4ed\\code\\custom\\4coder_vim_lists.cpp", 44, 846 },
+{ PROC_LINKS(vim_switch_lister, 0), true, "vim_switch_lister", 17, "Opens an interactive list of all loaded buffers.", 48, "D:\\work\\4ed\\code\\custom\\4coder_vim_lists.cpp", 44, 667 },
 { PROC_LINKS(vim_theme_lister, 0), true, "vim_theme_lister", 16, "Opens an interactive list of all registered themes.", 51, "D:\\work\\4ed\\code\\custom\\4coder_vim_lists.cpp", 44, 548 },
 { PROC_LINKS(word_complete, 0), false, "word_complete", 13, "Iteratively tries completing the word to the left of the cursor with other words in open buffers that have the same prefix string.", 130, "D:\\work\\4ed\\code\\custom\\4coder_search.cpp", 41, 464 },
 { PROC_LINKS(word_complete_drop_down, 0), false, "word_complete_drop_down", 23, "Word complete with drop down menu.", 34, "D:\\work\\4ed\\code\\custom\\4coder_search.cpp", 41, 710 },
@@ -867,135 +869,136 @@ static i32 fcoder_metacmd_ID_music_stop = 190;
 static i32 fcoder_metacmd_ID_open_all_code = 191;
 static i32 fcoder_metacmd_ID_open_all_code_recursive = 192;
 static i32 fcoder_metacmd_ID_open_file_in_quotes = 193;
-static i32 fcoder_metacmd_ID_open_in_other = 194;
-static i32 fcoder_metacmd_ID_open_long_braces = 195;
-static i32 fcoder_metacmd_ID_open_long_braces_break = 196;
-static i32 fcoder_metacmd_ID_open_long_braces_semicolon = 197;
-static i32 fcoder_metacmd_ID_open_matching_file_cpp = 198;
-static i32 fcoder_metacmd_ID_open_panel_hsplit = 199;
-static i32 fcoder_metacmd_ID_open_panel_vsplit = 200;
-static i32 fcoder_metacmd_ID_page_down = 201;
-static i32 fcoder_metacmd_ID_page_up = 202;
-static i32 fcoder_metacmd_ID_paste = 203;
-static i32 fcoder_metacmd_ID_paste_and_indent = 204;
-static i32 fcoder_metacmd_ID_paste_next = 205;
-static i32 fcoder_metacmd_ID_paste_next_and_indent = 206;
-static i32 fcoder_metacmd_ID_place_in_scope = 207;
-static i32 fcoder_metacmd_ID_play_with_a_counter = 208;
-static i32 fcoder_metacmd_ID_profile_clear = 209;
-static i32 fcoder_metacmd_ID_profile_disable = 210;
-static i32 fcoder_metacmd_ID_profile_enable = 211;
-static i32 fcoder_metacmd_ID_profile_inspect = 212;
-static i32 fcoder_metacmd_ID_project_command_F1 = 213;
-static i32 fcoder_metacmd_ID_project_command_F10 = 214;
-static i32 fcoder_metacmd_ID_project_command_F11 = 215;
-static i32 fcoder_metacmd_ID_project_command_F12 = 216;
-static i32 fcoder_metacmd_ID_project_command_F13 = 217;
-static i32 fcoder_metacmd_ID_project_command_F14 = 218;
-static i32 fcoder_metacmd_ID_project_command_F15 = 219;
-static i32 fcoder_metacmd_ID_project_command_F16 = 220;
-static i32 fcoder_metacmd_ID_project_command_F2 = 221;
-static i32 fcoder_metacmd_ID_project_command_F3 = 222;
-static i32 fcoder_metacmd_ID_project_command_F4 = 223;
-static i32 fcoder_metacmd_ID_project_command_F5 = 224;
-static i32 fcoder_metacmd_ID_project_command_F6 = 225;
-static i32 fcoder_metacmd_ID_project_command_F7 = 226;
-static i32 fcoder_metacmd_ID_project_command_F8 = 227;
-static i32 fcoder_metacmd_ID_project_command_F9 = 228;
-static i32 fcoder_metacmd_ID_project_command_lister = 229;
-static i32 fcoder_metacmd_ID_project_fkey_command = 230;
-static i32 fcoder_metacmd_ID_project_go_to_root_directory = 231;
-static i32 fcoder_metacmd_ID_project_reprint = 232;
-static i32 fcoder_metacmd_ID_query_replace = 233;
-static i32 fcoder_metacmd_ID_query_replace_identifier = 234;
-static i32 fcoder_metacmd_ID_query_replace_selection = 235;
-static i32 fcoder_metacmd_ID_quick_swap_buffer = 236;
-static i32 fcoder_metacmd_ID_redo = 237;
-static i32 fcoder_metacmd_ID_redo_all_buffers = 238;
-static i32 fcoder_metacmd_ID_reload_project = 239;
-static i32 fcoder_metacmd_ID_rename_file_query = 240;
-static i32 fcoder_metacmd_ID_reopen = 241;
-static i32 fcoder_metacmd_ID_replace_in_all_buffers = 242;
-static i32 fcoder_metacmd_ID_replace_in_buffer = 243;
-static i32 fcoder_metacmd_ID_replace_in_range = 244;
-static i32 fcoder_metacmd_ID_reverse_search = 245;
-static i32 fcoder_metacmd_ID_reverse_search_identifier = 246;
-static i32 fcoder_metacmd_ID_save = 247;
-static i32 fcoder_metacmd_ID_save_all_dirty_buffers = 248;
-static i32 fcoder_metacmd_ID_save_to_query = 249;
-static i32 fcoder_metacmd_ID_search = 250;
-static i32 fcoder_metacmd_ID_search_identifier = 251;
-static i32 fcoder_metacmd_ID_seek_beginning_of_line = 252;
-static i32 fcoder_metacmd_ID_seek_beginning_of_textual_line = 253;
-static i32 fcoder_metacmd_ID_seek_end_of_line = 254;
-static i32 fcoder_metacmd_ID_seek_end_of_textual_line = 255;
-static i32 fcoder_metacmd_ID_select_all = 256;
-static i32 fcoder_metacmd_ID_select_next_scope_absolute = 257;
-static i32 fcoder_metacmd_ID_select_next_scope_after_current = 258;
-static i32 fcoder_metacmd_ID_select_prev_scope_absolute = 259;
-static i32 fcoder_metacmd_ID_select_prev_top_most_scope = 260;
-static i32 fcoder_metacmd_ID_select_surrounding_scope = 261;
-static i32 fcoder_metacmd_ID_select_surrounding_scope_maximal = 262;
-static i32 fcoder_metacmd_ID_set_eol_mode_from_contents = 263;
-static i32 fcoder_metacmd_ID_set_eol_mode_to_binary = 264;
-static i32 fcoder_metacmd_ID_set_eol_mode_to_crlf = 265;
-static i32 fcoder_metacmd_ID_set_eol_mode_to_lf = 266;
-static i32 fcoder_metacmd_ID_set_face_size = 267;
-static i32 fcoder_metacmd_ID_set_face_size_this_buffer = 268;
-static i32 fcoder_metacmd_ID_set_mark = 269;
-static i32 fcoder_metacmd_ID_set_mode_to_notepad_like = 270;
-static i32 fcoder_metacmd_ID_set_mode_to_original = 271;
-static i32 fcoder_metacmd_ID_setup_build_bat = 272;
-static i32 fcoder_metacmd_ID_setup_build_bat_and_sh = 273;
-static i32 fcoder_metacmd_ID_setup_build_sh = 274;
-static i32 fcoder_metacmd_ID_setup_new_project = 275;
-static i32 fcoder_metacmd_ID_show_file_in_explorer = 276;
-static i32 fcoder_metacmd_ID_show_filebar = 277;
-static i32 fcoder_metacmd_ID_show_scrollbar = 278;
-static i32 fcoder_metacmd_ID_show_the_log_graph = 279;
-static i32 fcoder_metacmd_ID_snipe_backward_whitespace_or_token_boundary = 280;
-static i32 fcoder_metacmd_ID_snipe_forward_whitespace_or_token_boundary = 281;
-static i32 fcoder_metacmd_ID_snippet_lister = 282;
-static i32 fcoder_metacmd_ID_string_repeat = 283;
-static i32 fcoder_metacmd_ID_suppress_mouse = 284;
-static i32 fcoder_metacmd_ID_swap_panels = 285;
-static i32 fcoder_metacmd_ID_theme_lister = 286;
-static i32 fcoder_metacmd_ID_to_lowercase = 287;
-static i32 fcoder_metacmd_ID_to_uppercase = 288;
-static i32 fcoder_metacmd_ID_toggle_filebar = 289;
-static i32 fcoder_metacmd_ID_toggle_fps_meter = 290;
-static i32 fcoder_metacmd_ID_toggle_fullscreen = 291;
-static i32 fcoder_metacmd_ID_toggle_highlight_enclosing_scopes = 292;
-static i32 fcoder_metacmd_ID_toggle_highlight_line_at_cursor = 293;
-static i32 fcoder_metacmd_ID_toggle_line_numbers = 294;
-static i32 fcoder_metacmd_ID_toggle_line_wrap = 295;
-static i32 fcoder_metacmd_ID_toggle_mouse = 296;
-static i32 fcoder_metacmd_ID_toggle_paren_matching_helper = 297;
-static i32 fcoder_metacmd_ID_toggle_show_whitespace = 298;
-static i32 fcoder_metacmd_ID_toggle_virtual_whitespace = 299;
-static i32 fcoder_metacmd_ID_tutorial_maximize = 300;
-static i32 fcoder_metacmd_ID_tutorial_minimize = 301;
-static i32 fcoder_metacmd_ID_uncomment_line = 302;
-static i32 fcoder_metacmd_ID_undo = 303;
-static i32 fcoder_metacmd_ID_undo_all_buffers = 304;
-static i32 fcoder_metacmd_ID_view_buffer_other_panel = 305;
-static i32 fcoder_metacmd_ID_view_jump_list_with_lister = 306;
-static i32 fcoder_metacmd_ID_vim_command_mode = 307;
-static i32 fcoder_metacmd_ID_vim_interactive_open_or_new = 308;
-static i32 fcoder_metacmd_ID_vim_list_all_functions_current_buffer_lister = 309;
-static i32 fcoder_metacmd_ID_vim_proj_cmd_lister = 310;
-static i32 fcoder_metacmd_ID_vim_switch_file_or_buffer = 311;
-static i32 fcoder_metacmd_ID_vim_switch_lister = 312;
-static i32 fcoder_metacmd_ID_vim_theme_lister = 313;
-static i32 fcoder_metacmd_ID_word_complete = 314;
-static i32 fcoder_metacmd_ID_word_complete_drop_down = 315;
-static i32 fcoder_metacmd_ID_write_block = 316;
-static i32 fcoder_metacmd_ID_write_hack = 317;
-static i32 fcoder_metacmd_ID_write_note = 318;
-static i32 fcoder_metacmd_ID_write_space = 319;
-static i32 fcoder_metacmd_ID_write_text_and_auto_indent = 320;
-static i32 fcoder_metacmd_ID_write_text_input = 321;
-static i32 fcoder_metacmd_ID_write_todo = 322;
-static i32 fcoder_metacmd_ID_write_underscore = 323;
-static i32 fcoder_metacmd_ID_write_zero_struct = 324;
+static i32 fcoder_metacmd_ID_open_file_in_visual_studio = 194;
+static i32 fcoder_metacmd_ID_open_in_other = 195;
+static i32 fcoder_metacmd_ID_open_long_braces = 196;
+static i32 fcoder_metacmd_ID_open_long_braces_break = 197;
+static i32 fcoder_metacmd_ID_open_long_braces_semicolon = 198;
+static i32 fcoder_metacmd_ID_open_matching_file_cpp = 199;
+static i32 fcoder_metacmd_ID_open_panel_hsplit = 200;
+static i32 fcoder_metacmd_ID_open_panel_vsplit = 201;
+static i32 fcoder_metacmd_ID_page_down = 202;
+static i32 fcoder_metacmd_ID_page_up = 203;
+static i32 fcoder_metacmd_ID_paste = 204;
+static i32 fcoder_metacmd_ID_paste_and_indent = 205;
+static i32 fcoder_metacmd_ID_paste_next = 206;
+static i32 fcoder_metacmd_ID_paste_next_and_indent = 207;
+static i32 fcoder_metacmd_ID_place_in_scope = 208;
+static i32 fcoder_metacmd_ID_play_with_a_counter = 209;
+static i32 fcoder_metacmd_ID_profile_clear = 210;
+static i32 fcoder_metacmd_ID_profile_disable = 211;
+static i32 fcoder_metacmd_ID_profile_enable = 212;
+static i32 fcoder_metacmd_ID_profile_inspect = 213;
+static i32 fcoder_metacmd_ID_project_command_F1 = 214;
+static i32 fcoder_metacmd_ID_project_command_F10 = 215;
+static i32 fcoder_metacmd_ID_project_command_F11 = 216;
+static i32 fcoder_metacmd_ID_project_command_F12 = 217;
+static i32 fcoder_metacmd_ID_project_command_F13 = 218;
+static i32 fcoder_metacmd_ID_project_command_F14 = 219;
+static i32 fcoder_metacmd_ID_project_command_F15 = 220;
+static i32 fcoder_metacmd_ID_project_command_F16 = 221;
+static i32 fcoder_metacmd_ID_project_command_F2 = 222;
+static i32 fcoder_metacmd_ID_project_command_F3 = 223;
+static i32 fcoder_metacmd_ID_project_command_F4 = 224;
+static i32 fcoder_metacmd_ID_project_command_F5 = 225;
+static i32 fcoder_metacmd_ID_project_command_F6 = 226;
+static i32 fcoder_metacmd_ID_project_command_F7 = 227;
+static i32 fcoder_metacmd_ID_project_command_F8 = 228;
+static i32 fcoder_metacmd_ID_project_command_F9 = 229;
+static i32 fcoder_metacmd_ID_project_command_lister = 230;
+static i32 fcoder_metacmd_ID_project_fkey_command = 231;
+static i32 fcoder_metacmd_ID_project_go_to_root_directory = 232;
+static i32 fcoder_metacmd_ID_project_reprint = 233;
+static i32 fcoder_metacmd_ID_query_replace = 234;
+static i32 fcoder_metacmd_ID_query_replace_identifier = 235;
+static i32 fcoder_metacmd_ID_query_replace_selection = 236;
+static i32 fcoder_metacmd_ID_quick_swap_buffer = 237;
+static i32 fcoder_metacmd_ID_redo = 238;
+static i32 fcoder_metacmd_ID_redo_all_buffers = 239;
+static i32 fcoder_metacmd_ID_reload_project = 240;
+static i32 fcoder_metacmd_ID_rename_file_query = 241;
+static i32 fcoder_metacmd_ID_reopen = 242;
+static i32 fcoder_metacmd_ID_replace_in_all_buffers = 243;
+static i32 fcoder_metacmd_ID_replace_in_buffer = 244;
+static i32 fcoder_metacmd_ID_replace_in_range = 245;
+static i32 fcoder_metacmd_ID_reverse_search = 246;
+static i32 fcoder_metacmd_ID_reverse_search_identifier = 247;
+static i32 fcoder_metacmd_ID_save = 248;
+static i32 fcoder_metacmd_ID_save_all_dirty_buffers = 249;
+static i32 fcoder_metacmd_ID_save_to_query = 250;
+static i32 fcoder_metacmd_ID_search = 251;
+static i32 fcoder_metacmd_ID_search_identifier = 252;
+static i32 fcoder_metacmd_ID_seek_beginning_of_line = 253;
+static i32 fcoder_metacmd_ID_seek_beginning_of_textual_line = 254;
+static i32 fcoder_metacmd_ID_seek_end_of_line = 255;
+static i32 fcoder_metacmd_ID_seek_end_of_textual_line = 256;
+static i32 fcoder_metacmd_ID_select_all = 257;
+static i32 fcoder_metacmd_ID_select_next_scope_absolute = 258;
+static i32 fcoder_metacmd_ID_select_next_scope_after_current = 259;
+static i32 fcoder_metacmd_ID_select_prev_scope_absolute = 260;
+static i32 fcoder_metacmd_ID_select_prev_top_most_scope = 261;
+static i32 fcoder_metacmd_ID_select_surrounding_scope = 262;
+static i32 fcoder_metacmd_ID_select_surrounding_scope_maximal = 263;
+static i32 fcoder_metacmd_ID_set_eol_mode_from_contents = 264;
+static i32 fcoder_metacmd_ID_set_eol_mode_to_binary = 265;
+static i32 fcoder_metacmd_ID_set_eol_mode_to_crlf = 266;
+static i32 fcoder_metacmd_ID_set_eol_mode_to_lf = 267;
+static i32 fcoder_metacmd_ID_set_face_size = 268;
+static i32 fcoder_metacmd_ID_set_face_size_this_buffer = 269;
+static i32 fcoder_metacmd_ID_set_mark = 270;
+static i32 fcoder_metacmd_ID_set_mode_to_notepad_like = 271;
+static i32 fcoder_metacmd_ID_set_mode_to_original = 272;
+static i32 fcoder_metacmd_ID_setup_build_bat = 273;
+static i32 fcoder_metacmd_ID_setup_build_bat_and_sh = 274;
+static i32 fcoder_metacmd_ID_setup_build_sh = 275;
+static i32 fcoder_metacmd_ID_setup_new_project = 276;
+static i32 fcoder_metacmd_ID_show_file_in_explorer = 277;
+static i32 fcoder_metacmd_ID_show_filebar = 278;
+static i32 fcoder_metacmd_ID_show_scrollbar = 279;
+static i32 fcoder_metacmd_ID_show_the_log_graph = 280;
+static i32 fcoder_metacmd_ID_snipe_backward_whitespace_or_token_boundary = 281;
+static i32 fcoder_metacmd_ID_snipe_forward_whitespace_or_token_boundary = 282;
+static i32 fcoder_metacmd_ID_snippet_lister = 283;
+static i32 fcoder_metacmd_ID_string_repeat = 284;
+static i32 fcoder_metacmd_ID_suppress_mouse = 285;
+static i32 fcoder_metacmd_ID_swap_panels = 286;
+static i32 fcoder_metacmd_ID_theme_lister = 287;
+static i32 fcoder_metacmd_ID_to_lowercase = 288;
+static i32 fcoder_metacmd_ID_to_uppercase = 289;
+static i32 fcoder_metacmd_ID_toggle_filebar = 290;
+static i32 fcoder_metacmd_ID_toggle_fps_meter = 291;
+static i32 fcoder_metacmd_ID_toggle_fullscreen = 292;
+static i32 fcoder_metacmd_ID_toggle_highlight_enclosing_scopes = 293;
+static i32 fcoder_metacmd_ID_toggle_highlight_line_at_cursor = 294;
+static i32 fcoder_metacmd_ID_toggle_line_numbers = 295;
+static i32 fcoder_metacmd_ID_toggle_line_wrap = 296;
+static i32 fcoder_metacmd_ID_toggle_mouse = 297;
+static i32 fcoder_metacmd_ID_toggle_paren_matching_helper = 298;
+static i32 fcoder_metacmd_ID_toggle_show_whitespace = 299;
+static i32 fcoder_metacmd_ID_toggle_virtual_whitespace = 300;
+static i32 fcoder_metacmd_ID_tutorial_maximize = 301;
+static i32 fcoder_metacmd_ID_tutorial_minimize = 302;
+static i32 fcoder_metacmd_ID_uncomment_line = 303;
+static i32 fcoder_metacmd_ID_undo = 304;
+static i32 fcoder_metacmd_ID_undo_all_buffers = 305;
+static i32 fcoder_metacmd_ID_view_buffer_other_panel = 306;
+static i32 fcoder_metacmd_ID_view_jump_list_with_lister = 307;
+static i32 fcoder_metacmd_ID_vim_command_mode = 308;
+static i32 fcoder_metacmd_ID_vim_interactive_open_or_new = 309;
+static i32 fcoder_metacmd_ID_vim_list_all_functions_current_buffer_lister = 310;
+static i32 fcoder_metacmd_ID_vim_proj_cmd_lister = 311;
+static i32 fcoder_metacmd_ID_vim_switch_file_or_buffer = 312;
+static i32 fcoder_metacmd_ID_vim_switch_lister = 313;
+static i32 fcoder_metacmd_ID_vim_theme_lister = 314;
+static i32 fcoder_metacmd_ID_word_complete = 315;
+static i32 fcoder_metacmd_ID_word_complete_drop_down = 316;
+static i32 fcoder_metacmd_ID_write_block = 317;
+static i32 fcoder_metacmd_ID_write_hack = 318;
+static i32 fcoder_metacmd_ID_write_note = 319;
+static i32 fcoder_metacmd_ID_write_space = 320;
+static i32 fcoder_metacmd_ID_write_text_and_auto_indent = 321;
+static i32 fcoder_metacmd_ID_write_text_input = 322;
+static i32 fcoder_metacmd_ID_write_todo = 323;
+static i32 fcoder_metacmd_ID_write_underscore = 324;
+static i32 fcoder_metacmd_ID_write_zero_struct = 325;
 #endif
