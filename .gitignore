@@ -31,3 +31,5 @@ build/4ed.pdb
 *.dll
 *.obj
 *.ilk
+build/4ed_app.exp
+build/4ed_app.lib
