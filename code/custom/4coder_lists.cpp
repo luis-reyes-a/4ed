@@ -471,6 +471,7 @@ do_buffer_kill_user_check(Application_Links *app, Buffer_ID buffer, View_ID view
 
 function b32
 do_4coder_close_user_check(Application_Links *app, View_ID view){
+    Assert (0);
     Scratch_Block scratch(app);
     Lister_Choice_List list = {};
     lister_choice(scratch, &list, "(N)o"  , "", KeyCode_N, SureToKill_No);

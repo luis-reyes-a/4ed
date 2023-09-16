@@ -58,6 +58,7 @@
 #include "win32_utf8.h"
 #include "win32_gl.h"
 
+
 ////////////////////////////////
 
 global b32 log_os_enabled = false;
@@ -1561,12 +1562,14 @@ win32_gl_create_window(HWND *wnd_out, HGLRC *context_out, DWORD style, RECT rect
         // NOTE(allen): Register the graphics window class
         log_os(" registering graphics class...\n");
         
+        #define MAIN_GRAPHICS_WINDOW_CLASS_NAME L"4coder-GRAPHICS-WINDOW-NAME"
+        
         WNDCLASSW wndclass = {};
         wndclass.style = CS_HREDRAW|CS_VREDRAW|CS_DBLCLKS;
         wndclass.lpfnWndProc = win32_proc;
         wndclass.hIcon = LoadIconW(GetModuleHandle(0), L"main");
         wndclass.hInstance = this_instance;
-        wndclass.lpszClassName = L"GRAPHICS-WINDOW-NAME";
+        wndclass.lpszClassName = MAIN_GRAPHICS_WINDOW_CLASS_NAME;
         if (RegisterClassW(&wndclass) == 0){
             register_success = false;
             goto fail_register;
@@ -1579,7 +1582,8 @@ win32_gl_create_window(HWND *wnd_out, HGLRC *context_out, DWORD style, RECT rect
         // NOTE(allen): Create the graphics window
         log_os(" creating graphics window...\n");
         
-        HWND wnd = CreateWindowExW(0, L"GRAPHICS-WINDOW-NAME", L"GRAPHICS", style,
+        
+        HWND wnd = CreateWindowExW(0, MAIN_GRAPHICS_WINDOW_CLASS_NAME, L"GRAPHICS", style,
                                    CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top,
                                    0, 0, this_instance, 0);
         
@@ -1784,25 +1788,32 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     
     Plat_Settings plat_settings = {};
     void *base_ptr = 0;
+    
+    char **init_files_to_open = 0;
+    i32 *init_files_to_open_count = 0;
     {
         Scratch_Block scratch(win32vars.tctx);
         String_Const_u8 curdir = system_get_path(scratch, SystemPath_CurrentDirectory);
         curdir = string_mod_replace_character(curdir, '\\', '/');
-        char **files = 0;
-        i32 *file_count = 0;
-        base_ptr = app.read_command_line(win32vars.tctx, curdir, &plat_settings, &files, &file_count, argc, argv);
+        
+        base_ptr = app.read_command_line(win32vars.tctx, curdir, &plat_settings, &init_files_to_open, &init_files_to_open_count, argc, argv);
         {
-            i32 end = *file_count;
+            i32 end = *init_files_to_open_count;
             i32 i = 0, j = 0;
             for (; i < end; ++i){
-                if (system_file_can_be_made(scratch, (u8*)files[i])){
-                    files[j] = files[i];
+                if (system_file_can_be_made(scratch, (u8*)init_files_to_open[i])){
+                    init_files_to_open[j] = init_files_to_open[i];
                     ++j;
                 }
             }
-            *file_count = j;
+            *init_files_to_open_count = j;
         }
     }
+    
+    
+    
+    
+    
     
     // NOTE(allen): setup user directory override
     log_os("User directory override: '%s'\n", plat_settings.user_directory);
@@ -1915,6 +1926,21 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     HGLRC window_opengl_context = 0;
     if (!win32_gl_create_window(&win32vars.window_handle, &window_opengl_context, window_style, window_rect)){
         exit(1);
+    }
+    
+    
+    bool open_in_preexisting_4coder = true;
+    if (open_in_preexisting_4coder && (*init_files_to_open_count > 0)) {
+        HWND preexisting_handle = FindWindowW(MAIN_GRAPHICS_WINDOW_CLASS_NAME, NULL);
+        if (preexisting_handle != INVALID_HANDLE_VALUE) {
+            COPYDATASTRUCT copydata = {};
+            copydata.dwData = 1;          // function identifier
+            copydata.cbData = (DWORD)strlen(init_files_to_open[0]);  // size of data
+            copydata.lpData = init_files_to_open[0];  
+            
+            SendMessage(preexisting_handle, WM_COPYDATA, (WPARAM)win32vars.window_handle, (LPARAM) (LPVOID)&copydata);
+            ExitProcess(0);
+        }    
     }
     
     log_os(" window created successfully\n");

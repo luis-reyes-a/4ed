@@ -585,7 +585,8 @@ setup_essential_mapping(Mapping *mapping, i64 global_id, i64 file_id, i64 code_i
     
     SelectMap(global_id);
     BindCore(default_startup, CoreCode_Startup);
-    BindCore(default_try_exit, CoreCode_TryExit);
+    //BindCore(default_try_exit, CoreCode_TryExit);
+    BindCore(luis_try_exit, CoreCode_TryExit); // can't seem to override this by calling this again after calling this function... weird
     BindCore(clipboard_record_clip, CoreCode_NewClipboardContents);
     BindMouseWheel(mouse_wheel_scroll);
     BindMouseWheel(luis_horizontal_mouse_wheel_scroll, KeyCode_Control); //NOTE luis added this
@@ -604,7 +605,7 @@ setup_essential_mapping(Mapping *mapping, i64 global_id, i64 file_id, i64 code_i
     BindTextInput(write_text_and_auto_indent);
 }
 
-function void
+function Buffer_ID
 default_4coder_initialize(Application_Links *app, String_Const_u8_Array file_names, i32 override_font_size, b32 override_hinting){
 #define M \
 "Welcome to " VERSION "\n" \
@@ -621,6 +622,7 @@ default_4coder_initialize(Application_Links *app, String_Const_u8_Array file_nam
     print_message(app, string_u8_litexpr(M));
 #undef M
     
+    Buffer_ID first_command_line_file_buffer = 0;
     Scratch_Block scratch(app);
     
     load_config_and_apply(app, &global_config_arena, override_font_size, override_hinting);
@@ -659,28 +661,34 @@ default_4coder_initialize(Application_Links *app, String_Const_u8_Array file_nam
         if (new_buffer == 0){
             create_buffer(app, input_name, 0);
         }
+        
+        if (new_buffer && (i == 0)) { //
+            first_command_line_file_buffer = new_buffer;
+        }
     }
+    
+    return first_command_line_file_buffer;
 }
 
-function void
+function Buffer_ID
 default_4coder_initialize(Application_Links *app, i32 override_font_size, b32 override_hinting){
     String_Const_u8_Array file_names = {};
-    default_4coder_initialize(app, file_names, override_font_size, override_hinting);
+    return default_4coder_initialize(app, file_names, override_font_size, override_hinting);
 }
 
-function void
+function Buffer_ID
 default_4coder_initialize(Application_Links *app, String_Const_u8_Array file_names){
     Face_Description description = get_face_description(app, 0);
-    default_4coder_initialize(app, file_names,
-                              description.parameters.pt_size,
-                              description.parameters.hinting);
+    return default_4coder_initialize(app, file_names,
+                                     description.parameters.pt_size,
+                                     description.parameters.hinting);
 }
 
-function void
+function Buffer_ID
 default_4coder_initialize(Application_Links *app){
     Face_Description command_line_description = get_face_description(app, 0);
     String_Const_u8_Array file_names = {};
-    default_4coder_initialize(app, file_names, command_line_description.parameters.pt_size, command_line_description.parameters.hinting);
+    return default_4coder_initialize(app, file_names, command_line_description.parameters.pt_size, command_line_description.parameters.hinting);
 }
 
 function void

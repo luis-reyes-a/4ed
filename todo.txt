@@ -1,0 +1,27 @@
+What I've done
+- macros are aligned like code statements (not to first column of file)
+- added namespaces to code index
+- have ways to quickly peek a code index
+- vim switch file and switch buffer listers show preview of the file before actually switching to it
+- added a couple extra theme identifiers (functions, macros, types)
+- backspacing during incremental search resets the current search pos (just like Emacs)
+- opening a file opens it to currently viewing buffer's directory (just like Emacs)
+- changed 4coder ask-save-all-before-quitting popup because the default one I always found confusing
+- [REMOVED] tabs per view [removed because I found this confusing to use and I didn't want to keep maintaining it]
+- emacs-style kill-line that has some bugs (calling it repeatidly from the command lister won't append the copies...)
+- passing in files to open from command line automatically sets first file to the default main view (usually *messages* is default). Also it will not create a file if it doesn't exist. I prefer this convention.
+
+Known bugs:
+- when editing a file that was just externally modified by another program, a popup (query bar) appears that asks user if he wants to reload the file and lose changes made. Trying to escape doesn't escape and further attempts to edit file spawns more of the same popup to appear. This is because code that creates the popup is in input_event_handler(). It should be in some event that fires when 4coder gains focus but 4coder doesn't have an event or place for that...
+- BYP's vim_lister thing with multiple columns has wierd problems when moving around. Moving horizontally sometimes jumps to another row and moving vertically changes what column you were in. Works for the most part but it can be annoying.
+
+TODO
+[x] make backspacing fsearch restart search from initial pos
+[x] have way to make buffers easily like emacs
+[] saving buffer created with vim_switch_buffer opens a "Save As" dialogue
+[x] jumping to new errors makes error in *compilation* visible from top of panel
+[] regex based incremental search
+[x] auto load files that were modified externally
+[] make cursor blink when idle
+
+

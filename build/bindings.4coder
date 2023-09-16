@@ -9,7 +9,7 @@ keys_global = {
 
     { "vim_interactive_open_or_new",    "O", "Control" },
     //{ "luis_new_tab",               "T", "Control" },
-    { "luis_close_panel",    "W", "Control" },
+    { "luis_close_peek_or_active_panel", "W", "Control" },
 
     { "vim_switch_lister",             "B", "Control" },
 	{ "quick_swap_buffer",             "B", "Alt" },
@@ -20,6 +20,7 @@ keys_global = {
     { "luis_goto_next_jump",                "PageDown", "Control" },
  
     { "luis_toggle_modal_mode",        "D", "Control" },
+    { "luis_toggle_modal_mode",        "F8"},
     { "vim_command_mode",                "X", "Alt" },
     { "project_command_lister",        "X", "Alt", "Shift" },
 
@@ -33,6 +34,15 @@ keys_global = {
     { "luis_home",      "Home" },
     { "page_up",        "PageUp" },
     { "page_down",      "PageDown" },
+	
+	{ "open_panel_vsplit",           "3", "Control" },
+	{ "open_panel_hsplit",           "2", "Control" },
+	{ "luis_close_current_panel",    "0", "Control" },
+	{ "luis_close_all_other_panels", "1", "Control" },
+	
+
+    { "increase_face_size", "Equal", "Control"},
+    { "decrease_face_size", "Minus", "Control"},
 
 	 
 	{ "luis_code_index_prev",    "Up",   "Alt" },
@@ -43,14 +53,13 @@ keys_global = {
 	{ "word_complete",           "J", "Control" },
     
 	{ "exit_4coder",          "F4", "Alt" },
-    //{ "luis_list_exact_matches_of_identifier",             "F1" },
-    //{ "list_all_locations_of_identifier_case_insensitive", "F1", "Control"},
+    { "open_file_in_10x",           "F1", "Control" },
+    { "open_file_in_visual_studio", "F1"},
     //{ "list_all_locations_of_selection",                   "F2" },
 	//{ "list_all_locations_of_selection_case_insensitive",  "F2", "Control"},
 	//{ "list_all_substring_locations",                      "F3" },
 	//{ "list_all_substring_locations_case_insensitive",     "F3", "Control"},
 
-    { "reopen",     "F4" },
     //{ "toggle_footer_panel",     "F4" },
     //{ "open_footer_panel_big",   "F4", "Control"},
 
@@ -95,6 +104,7 @@ keys_file = {
 
 
 
+
     { "delete_char",            "Delete" },
     { "backspace_char",         "Backspace" },
     { "backspace_alpha_numeric_boundary", "Backspace", "Control" },
@@ -112,6 +122,8 @@ keys_file = {
     { "paste_and_indent",            "V", "Alt" },
 	{ "redo",                        "U", "Alt" },
     { "undo",                        "U", "Control" },
+    { "undo",                        "Z", "Control" },
+    { "redo",                        "Z", "Alt" },
 
 	{ "luis_remove_tab",               "LeftBracket",  "Control" },
 	{ "luis_add_tab",                  "RightBracket", "Control" },
@@ -136,8 +148,9 @@ keys_file = {
     { "luis_view_peek_as_split_window",  "P", "Control" },
     { "luis_view_peek_in_parent_window", "P", "Alt" },
 
-    { "luis_list_notes_all_buffers",     "N", "Control" },
-	{ "luis_list_functions_all_buffers", "N", "Alt"},
+	{ "luis_list_notes_no_duplicates",   "N", "Control" },
+    { "luis_list_notes_all_buffers",     "N", "Alt" },
+	{ "luis_list_functions_all_buffers", "N", "Alt", "Shift"},
     { "luis_vim_string_matches",         "M", "Control" },
 	{ "luis_show_search_panel",          "M", "Alt" },
 	
@@ -150,18 +163,20 @@ keys_file = {
     //{ "word_complete_drop_down", "J", "Alt" },
 	 //{ "show_type_members", "J", "Alt" },
     { "luis_scope_braces",      "I",      "Control" },
+	{ "luis_open_up_braces",    "I",      "Alt" },
     
     { "luis_indent_range",       "Tab" },
     { "luis_write_tab",          "Tab", "Control" },
     //{ "luis_tab_next",           "Tab", "Control" },
     //{ "luis_tab_prev",           "Tab", "Control", "Shift" },
     
-	 { "goto_line",               "G", "Control" },
+	{ "goto_line",               "G", "Control" },
 
-	 { "comment_line_toggle",     "ForwardSlash",  "Control"},
+	{ "comment_line_toggle",     "ForwardSlash",  "Control"},
 	 
-	{ "luis_matching_file_cpp_same_buffer",  "K", "Control" },
-    { "luis_matching_file_cpp",              "K", "Alt" },
+	{ "luis_matching_file_cpp_same_buffer",  "O", "Alt" },
+    { "luis_matching_file_cpp",              "O", "Alt", "Shift" },
+	{ "emacs_kill_line",  "K", "Control" },
 };
 
 //keys_code = {
@@ -172,10 +187,16 @@ keys_file = {
 keys_modal = {
 	{ "luis_escape",              "Escape"},
     { "luis_toggle_modal_mode",      "D", "Control" },
+    { "luis_toggle_modal_mode",      "F8"},
 	{ "change_active_panel", "Semicolon", "Control"},
-    { "luis_close_panel",     "W", "Control" },
+    { "luis_close_peek_or_active_panel",     "W", "Control" },
 	{ "delete_range",           "Backspace"},
     { "backspace_char",         "Backspace", "Control" },
+	
+	{ "open_panel_vsplit",           "3", "Control" },
+	{ "open_panel_hsplit",           "2", "Control" },
+	{ "luis_close_current_panel",    "0", "Control" },
+	{ "luis_close_all_other_panels", "1", "Control" },
 	 
 	{ "move_up",    "E" },
     { "move_down",  "D" },

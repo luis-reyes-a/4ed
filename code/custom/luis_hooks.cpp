@@ -8,14 +8,20 @@ CUSTOM_DOC("Default command for responding to a startup event")
     if (match_core_code(&input, CoreCode_Startup)){
         String_Const_u8_Array file_names = input.event.core.file_names;
         load_themes_default_folder(app);
-        default_4coder_initialize(app, file_names);
+        Buffer_ID command_line_file_buffer = default_4coder_initialize(app, file_names);
         //default_4coder_side_by_side_panels(app, file_names);
         {
             Buffer_Identifier identifier = buffer_identifier(string_u8_litexpr("*messages*"));
             Buffer_ID id = buffer_identifier_to_id(app, identifier);
             View_ID view = get_active_view(app, Access_Always);
             new_view_settings(app, view);
-            view_set_buffer(app, view, id, 0);    
+            
+            if (command_line_file_buffer) { //prioritize command line file first
+                view_set_buffer(app, view, command_line_file_buffer, 0);
+            } else {
+                view_set_buffer(app, view, id, 0);    
+            }
+                
         }
         
         b32 auto_load = def_get_config_b32(vars_save_string_lit("automatically_load_project"));
@@ -32,11 +38,14 @@ CUSTOM_DOC("Default command for responding to a startup event")
         def_enable_virtual_whitespace = def_get_config_b32(vars_save_string_lit("enable_virtual_whitespace"));
         clear_all_layouts(app);
     }
+    
+    set_window_title(app, SCu8("milo editor"));
 }
 
+
+
 CUSTOM_COMMAND_SIG(luis_view_input_handler)
-CUSTOM_DOC("Input consumption loop for default view behavior")
-{
+CUSTOM_DOC("Input consumption loop for default view behavior") {
     Scratch_Block scratch(app);
     default_input_handler_init(app, scratch);
     
@@ -44,6 +53,7 @@ CUSTOM_DOC("Input consumption loop for default view behavior")
     View_ID active_view = get_active_view(app, Access_Always);
     Managed_Scope scope = view_get_managed_scope(app, view);
     //View_ID active_view = get_active_view(app, Access_Always);
+    
     
     for (;;) {
         // NOTE(allen): Get input
@@ -107,25 +117,28 @@ CUSTOM_DOC("Input consumption loop for default view behavior")
         }
         
         ProfileCloseNow(view_input_profile);
-        if (actually_do_command)
-        {
+        if (actually_do_command) {
             //b32 do_kill_tab_group = luis_view_has_flags(app, view, VIEW_KILL_TAB_GROUP_ON_VIEW_CLOSE);
             //i32 tab_group_index = view_get_tab_group_index(app, view);
             Buffer_ID buffer_id_before_command = view_get_buffer(app, view, Access_Always);
-            i64 cursor_pos_before_executed_command = view_get_cursor_pos(app, view); 
+            i64 cursor_pos_before_executed_command = view_get_cursor_pos(app, view);
+            
             map_result.command(app);
-            if (map_result.command == paste)
+            g_last_executed_command = map_result.command;
+            
+            if (map_result.command == paste) {
                 PREV_PASTE_INIT_CURSOR_POS = cursor_pos_before_executed_command;
-            else
+            } else {
                 PREV_PASTE_INIT_CURSOR_POS = -1;
+            }
+                
             
             //if (map_result.command != luis_peek_code_index_up && map_result.command != luis_peek_code_index_down)
                 //CURSOR_PEEK_CODE_INDEX_RELATIVE_LINE_OFFSET = -1;
             
             //NOTE we do this here instead of view_change_buffer because there we don't know
             //what the previous cursor pos and I can't find a way to get a view's buffer's cursor pos
-            if (view_get_buffer(app, view, Access_Always) != buffer_id_before_command)
-            {
+            if (view_get_buffer(app, view, Access_Always) != buffer_id_before_command) {
                 View_Buffer_Location *loc = view_get_prev_buffer_location(app, view);
                 if (loc)
                 {
@@ -201,6 +214,42 @@ CUSTOM_DOC("Input consumption loop for default view behavior")
                 if (snap_mark_to_cursor) {
                     i64 pos = view_get_cursor_pos(app, view);
                     view_set_mark(app, view, seek_pos(pos));
+                }
+            }
+            
+            Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+            Dirty_State dirty = buffer_get_dirty_state(app, buffer);
+            if (HasFlag(dirty, DirtyState_UnloadedChanges)) {
+                
+                if (HasFlag(dirty, DirtyState_UnsavedChanges)) {
+                    // query user to maybe save changes
+                    
+                    u8 textbuffer[16];
+                    Query_Bar bar = {};
+                    bar.prompt = SCu8("File modified externally... Reload file and lose changes (y/n)? ");
+                    bar.string = SCu8(textbuffer, (u64)0);
+                    bar.string_capacity = sizeof(textbuffer);
+                    if (query_user_string(app, &bar)) {
+                        String_Const_u8 result = string_skip_whitespace(bar.string);
+                        if (result.size > 0) {
+                            if (result.str[0] == 'y' || result.str[0] == 'Y') {
+                                Buffer_Reopen_Flag flags = {};
+                                buffer_reopen(app, buffer, flags);
+                            } else if (result.str[0] == 'n' || result.str[0] == 'N') {
+                                // do nothing
+                            } else {
+                                // TODO flash message...
+                                print_message(app, SCu8("Incorrect response. Please answer y(es) or n(o) when asked to reload the file with unsaved changes...\n"));
+                            }
+                            
+                            // query bar doesn't go away for  some after if we input answer 
+                            end_query_bar(app, &bar, 0);
+                        }
+                    }
+                } else {
+                    // just reload file no questions asked
+                    Buffer_Reopen_Flag flags = {};
+                    buffer_reopen(app, buffer, flags);    
                 }
             }
         }
@@ -930,6 +979,59 @@ luis_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id,
     draw_set_clip(app, prev_clip);
 }
 
+CUSTOM_COMMAND_SIG(luis_try_exit)
+CUSTOM_DOC("Default command for responding to a try-exit event") {
+    User_Input input = get_current_input(app);
+    if (match_core_code(&input, CoreCode_TryExit)){
+        b32 do_exit = true;
+        if (!allow_immediate_close_without_checking_for_changes){
+            b32 has_unsaved_changes = false;
+            for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always);
+                 buffer != 0;
+                 buffer = get_buffer_next(app, buffer, Access_Always)){
+                Dirty_State dirty = buffer_get_dirty_state(app, buffer);
+                if (HasFlag(dirty, DirtyState_UnsavedChanges)){
+                    has_unsaved_changes = true;
+                    break;
+                }
+            }
+            if (has_unsaved_changes) {
+                //View_ID view = get_active_view(app, Access_Always);
+                
+                Scratch_Block scratch(app);
+                Lister_Choice_List list = {};
+                
+                lister_choice(scratch, &list, "(Y)es - Save all and quit",       "", KeyCode_Y, SureToKill_Save);
+                lister_choice(scratch, &list, "(N)o  - Don't save, just quit" , "",  KeyCode_N, SureToKill_Yes);
+                lister_choice(scratch, &list, "(C)ancel"  ,                    "",   KeyCode_C, SureToKill_No);
+                
+                Lister_Choice *choice = get_choice_from_user(app, "There are buffer(s) with unsaved changes. Do you want to save changes before quitting?", list);
+                do_exit = false;
+                if (choice) {
+                    switch (choice->user_data){
+                    case SureToKill_No: break;
+                    
+                    case SureToKill_Yes: {
+                        allow_immediate_close_without_checking_for_changes = true;
+                        do_exit = true;
+                    } break;
+                    
+                    case SureToKill_Save: {
+                        save_all_dirty_buffers(app);
+                        allow_immediate_close_without_checking_for_changes = true;
+                        do_exit = true;
+                    }break;
+                    }    
+                }
+                
+            }
+        }
+        if (do_exit){
+            hard_exit(app);
+        }
+    }
+}
+
 function void
 luis_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view_id) {
     ProfileScope(app, "default render caller");
@@ -1044,8 +1146,7 @@ luis_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view_i
         draw_line_number_margin(app, view_id, buffer, face_id, text_layout_id, line_number_rect);
     }
     
-    bool byp_drop_shadow = true;
-    if (byp_drop_shadow) {
+    if (g_byp_drop_shadow) {
 		Buffer_Point shadow_point = buffer_point;
 		Face_Description desc = get_face_description(app, face_id);
 		shadow_point.pixel_shift -= Max((f32(desc.parameters.pt_size) / 8), 1.f)*V2f32(1.f, 1.f);
@@ -1288,7 +1389,7 @@ BUFFER_HOOK_SIG(luis_new_file) {
     
     Buffer_Insertion insert = begin_buffer_insertion_at_buffered(app, buffer_id, 0, scratch, KB(16));
     insertf(&insert,
-            "#ifndef %.*s //Created on %*s \n"
+            "#ifndef %.*s // Created on %.*s \n"
             "#define %.*s\n"
             "\n"
             "#endif //%.*s\n",

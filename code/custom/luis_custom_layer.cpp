@@ -16,6 +16,9 @@
 //#include "4coder_vim_helper.cpp" //TODO remove this
 #include "4coder_vim_lister.cpp"
 #include "4coder_vim_lists.cpp"
+
+static Custom_Command_Function *g_last_executed_command;
+
 #include "luis_commands.cpp"
 #include "luis_hooks.cpp"
 
@@ -23,57 +26,6 @@
 #include "generated/managed_id_metadata.cpp"
 #endif
 
-function void luis_default_mapping(Mapping *mapping, i64 global_id, i64 file_id, i64 code_id);
-
-void
-custom_layer_init(Application_Links *app) {
-    Thread_Context *tctx = get_thread_context(app);
-    
-    minibar_string.str = minibar_string_buffer;
-    minibar_string.cap = ArrayCount(minibar_string_buffer);
-    minibar_string.size = 0;
-    
-    SMALL_CODE_FACE   = RION_load_face_id(app, SCu8("consola.ttf"),  -2);
-    //ITALICS_CODE_FACE = RION_load_face_id(app, SCu8("consolai.ttf"), 0);
-    BOLD_CODE_FACE    = RION_load_face_id(app, SCu8("consolab.ttf"), 0);
-    
-    // NOTE(allen): setup for default framework
-    default_framework_init(app);
-    
-    // NOTE(allen): default hooks and command maps
-    set_all_default_hooks(app);
-    //custom hooks
-    set_custom_hook(app, HookID_Tick,                     luis_tick);
-    set_custom_hook(app, HookID_ViewEventHandler, luis_view_input_handler);
-    set_custom_hook(app, HookID_RenderCaller, luis_render_caller);
-    set_custom_hook(app, HookID_WholeScreenRenderCaller, luis_whole_screen_render_caller);
-    
-    set_custom_hook(app, HookID_BeginBuffer, luis_begin_buffer);
-    set_custom_hook(app, HookID_NewFile, luis_new_file);
-    set_custom_hook(app, HookID_BufferRegion, luis_buffer_region);
-    
-    
-    
-    mapping_init(tctx, &framework_mapping);
-    String_ID global_map_id = vars_save_string_lit("keys_global");
-    String_ID file_map_id = vars_save_string_lit("keys_file");
-    String_ID code_map_id = vars_save_string_lit("keys_code");
-#if OS_MAC
-    setup_mac_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
-#else
-    //setup_default_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
-    luis_default_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
-#endif
-	setup_essential_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
-    
-    {
-        MappingScope();
-        SelectMapping(&framework_mapping);
-        SelectMap(global_map_id);
-        BindCore(luis_startup, CoreCode_Startup);
-    }
-    
-}
 
 function void
 luis_default_mapping(Mapping *mapping, i64 global_id, i64 file_id, i64 code_id) {
@@ -221,6 +173,59 @@ luis_default_mapping(Mapping *mapping, i64 global_id, i64 file_id, i64 code_id) 
     Bind(write_zero_struct,          KeyCode_0, KeyCode_Control);
     Bind(jump_to_definition_at_cursor, KeyCode_W, KeyCode_Control);
 }
+
+void
+custom_layer_init(Application_Links *app) {
+    Thread_Context *tctx = get_thread_context(app);
+    
+    minibar_string.str = minibar_string_buffer;
+    minibar_string.cap = ArrayCount(minibar_string_buffer);
+    minibar_string.size = 0;
+    
+    SMALL_CODE_FACE   = RION_load_face_id(app, SCu8("consola.ttf"),  -2);
+    //ITALICS_CODE_FACE = RION_load_face_id(app, SCu8("consolai.ttf"), 0);
+    BOLD_CODE_FACE    = RION_load_face_id(app, SCu8("consolab.ttf"), 0);
+    
+    // NOTE(allen): setup for default framework
+    default_framework_init(app);
+    
+    // NOTE(allen): default hooks and command maps
+    set_all_default_hooks(app);
+    //custom hooks
+    set_custom_hook(app, HookID_Tick,                     luis_tick);
+    set_custom_hook(app, HookID_ViewEventHandler, luis_view_input_handler);
+    set_custom_hook(app, HookID_RenderCaller, luis_render_caller);
+    set_custom_hook(app, HookID_WholeScreenRenderCaller, luis_whole_screen_render_caller);
+    
+    set_custom_hook(app, HookID_BeginBuffer, luis_begin_buffer);
+    set_custom_hook(app, HookID_NewFile, luis_new_file);
+    set_custom_hook(app, HookID_BufferRegion, luis_buffer_region);
+    
+    
+    
+    mapping_init(tctx, &framework_mapping);
+    String_ID global_map_id = vars_save_string_lit("keys_global");
+    String_ID file_map_id = vars_save_string_lit("keys_file");
+    String_ID code_map_id = vars_save_string_lit("keys_code");
+#if OS_MAC
+    setup_mac_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
+#else
+    //setup_default_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
+    luis_default_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
+#endif
+	setup_essential_mapping(&framework_mapping, global_map_id, file_map_id, code_map_id);
+    
+    {
+        MappingScope();
+        SelectMapping(&framework_mapping);
+        SelectMap(global_map_id);
+        BindCore(luis_startup, CoreCode_Startup);
+        BindCore(luis_try_exit, CoreCode_TryExit); //this doesn't seem to override the same call in setup_essential_mapping so we modified that file...
+    }
+    
+}
+
+
 
 #endif //FCODER_DEFAULT_BINDINGS
 

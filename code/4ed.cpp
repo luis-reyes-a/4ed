@@ -25,6 +25,11 @@ init_command_line_settings(App_Settings *settings, Plat_Settings *plat_settings,
             arg = argv[i];
         }
         
+        if (arg[0] == '\"') {
+            printf("Open 4coder to file %s\n", arg);
+            continue;
+        }
+        
         if (arg[0] == '-' && arg[1] == '-'){
             char *long_arg_name = arg+2;
             if (string_match(SCu8(long_arg_name), string_u8_litexpr("custom"))){
@@ -333,7 +338,7 @@ App_Init_Sig(app_init){
     }
 }
 
-App_Step_Sig(app_step){
+App_Step_Sig(app_step) {
     Models *models = (Models*)base_ptr;
     
     Mutex_Lock file_order_lock(models->working_set.mutex);

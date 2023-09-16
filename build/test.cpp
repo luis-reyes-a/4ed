@@ -1,4 +1,4 @@
-
+     
 int main () {
     Type func = main();
     Another_One::do_something();

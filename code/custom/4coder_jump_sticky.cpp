@@ -417,6 +417,8 @@ jump_is_repeat(ID_Pos_Jump_Location prev, ID_Pos_Jump_Location location){
     return(prev.buffer_id == location.buffer_id && prev.pos == location.pos);
 }
 
+internal void center_view(Application_Links *app, View_ID view, float shift_y);
+
 internal void
 goto_next_filtered_jump(Application_Links *app, Marker_List *list, View_ID jump_view, i32 list_index, i32 direction, b32 skip_repeats, b32 skip_sub_errors){
     Assert(direction == 1 || direction == -1);
@@ -437,6 +439,8 @@ goto_next_filtered_jump(Application_Links *app, Marker_List *list, View_ID jump_
                     goto_jump_in_order(app, list, jump_view, location);
                     i64 updated_line = get_line_from_list(app, list, list_index);
                     view_set_cursor_and_preferred_x(app, jump_view, seek_line_col(updated_line, 1));
+                    
+                    center_view(app, jump_view, 0.00f); // NOTE(luis) added this to make error appear at top always
                     break;
                 }
             }

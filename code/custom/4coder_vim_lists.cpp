@@ -687,19 +687,28 @@ CUSTOM_DOC("Opens an interactive list of all loaded buffers.")
 	//string_append(&vim_bot_text, string_u8_litexpr("Switch:"));
     
 	Lister_Result l_result = vim_run_lister_with_refresh_handler(app, scratch, string_u8_litexpr("Switch:"), handlers, true);
-	Buffer_ID buffer = 0;
 	if (!l_result.canceled){
-		buffer = (Buffer_ID)(PtrAsInt(l_result.user_data));
+		Buffer_ID buffer = (Buffer_ID)(PtrAsInt(l_result.user_data));
+        if (buffer) {
+            View_ID view = get_this_ctx_view(app, Access_Always);
+            view_set_buffer(app, view, buffer, 0);    
+        } else { //create it
+            String_Const_u8 directory = get_directory_for_buffer(app, scratch, init_buffer);
+            
+            String_Const_u8 new_buffer_path = push_u8_stringf(scratch, "%.*s%.*s", string_expand(directory),  string_expand(l_result.text_field));
+            Buffer_Create_Flag flags = BufferCreate_NeverAttachToFile;
+            buffer = create_buffer(app, new_buffer_path, flags);
+            if (buffer) {
+                View_ID view = get_this_ctx_view(app, Access_Always);
+                view_set_buffer(app, view, buffer, 0);
+            }
+        }
 	} else {
         //return to initial place
         view_set_buffer(app, init_view, init_buffer, 0);
         view_set_cursor_and_preferred_x(app, init_view, seek_pos(init_cursor));
         view_set_buffer_scroll(app, init_view, init_view_scroll, SetBufferScroll_SnapCursorIntoView);
     }
-	if (buffer != 0){
-		View_ID view = get_this_ctx_view(app, Access_Always);
-		view_set_buffer(app, view, buffer, 0);
-	}
 }
 
 function void

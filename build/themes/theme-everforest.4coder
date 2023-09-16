@@ -1,0 +1,68 @@
+defcolor_back         = 0xFF2d353b;
+defcolor_text_default = 0xFFd3C6AA;
+
+defcolor_margin        = 0xFF4F585E; 
+defcolor_margin_hover  = defcolor_margin; 
+defcolor_margin_active = defcolor_margin;
+ 
+                         //text|margin color, background
+defcolor_list_item        = {defcolor_text_default, 0xff232A2E};
+defcolor_list_item_hover  = {defcolor_text_default, defcolor_bar};
+defcolor_list_item_active = {defcolor_text_default, defcolor_bar_active};
+
+
+defcolor_cursor = {defcolor_text_default, 0xffc4c4ff};
+luiscolor_modal_cursor = 0xffE67E80;
+defcolor_mark      = defcolor_cursor;
+defcolor_at_cursor = defcolor_back;
+
+defcolor_highlight    = 0xffA7C080; 
+defcolor_at_highlight = defcolor_back;
+defcolor_highlight_cursor_line = 0xff343F44; 
+ 
+defcolor_comment        = 0xff859289; 
+defcolor_comment_pop    = {0xffA7C080, 0xFFE67E80}; //{NOTE, TODO}
+defcolor_keyword        = 0xffE67E80; 
+defcolor_str_constant   = 0xffA7C080;
+defcolor_char_constant  = defcolor_str_constant;
+defcolor_int_constant   = 0xffD699B6; //0xffE89393;
+defcolor_float_constant = defcolor_int_constant;
+defcolor_bool_constant  = defcolor_int_constant;
+defcolor_include = defcolor_str_constant;
+defcolor_preproc = luiscolor_macro; //0xFFEEFFFF;
+
+//what ever are these?....
+defcolor_special_character = 0xFFFF0000;
+defcolor_ghost_character = 0xFF4E5E46;
+
+defcolor_paste = 0xffffffff; //0xFFF18C96;
+defcolor_undo  = 0xff000000; //0xFFF18C96;
+
+//what are these?
+defcolor_highlight_junk  = 0xff3a0000;
+defcolor_highlight_white = 0xff003a3a;
+
+//filebar I believe
+defcolor_bar = 0xff475258;
+defcolor_bar_active = 0xff4D4C43; //0xffA7C080;
+defcolor_base = defcolor_text_default;
+defcolor_pop1 = 0xFFE67E80;
+defcolor_pop2 = 0xFFE67E80;
+
+defcolor_back_cycle = {0xFFF18C96, 0xFF94BFF3, 0xFF80D4AA, 0xFFEFEFEF};
+defcolor_text_cycle = {0xffffffff, 0xffE89393, defcolor_str_constant, defcolor_highlight, defcolor_keyword, 0xffDFAF8F};  
+
+defcolor_line_numbers_back = defcolor_bar;
+defcolor_line_numbers_text = defcolor_base;
+
+luiscolor_type      = 0xffDBBC7F;
+luiscolor_macro     = 0xff7FBBB3;
+luiscolor_function  = 0xff83C092; 
+luiscolor_namespace = 0xffE69875; 
+
+
+luiscolor_variable_decl = defcolor_text_default; //0xfffdffde;
+luiscolor_logical_not   = 0xffE67E80; //0xFFF18C96;
+
+luiscolor_tab_current   = defcolor_text_default;
+luiscolor_tab_regular   = luiscolor_function;

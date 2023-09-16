@@ -1,4 +1,13 @@
 
+static bool g_byp_drop_shadow = false;
+
+
+CUSTOM_COMMAND_SIG(toggle_text_drop_shadow)
+CUSTOM_DOC("Toggle drop shadows") {
+    g_byp_drop_shadow = !g_byp_drop_shadow;
+    
+}
+
 //stolen from BYP, pretty cool!
 CUSTOM_COMMAND_SIG(show_file_in_explorer)
 CUSTOM_DOC("Opens file explorer in hot directory") {
@@ -41,6 +50,29 @@ CUSTOM_DOC("Open current file in visual studio") {
         }
     }
 }
+
+CUSTOM_COMMAND_SIG(open_file_in_10x)
+CUSTOM_DOC("Open current file in 10x") {
+    Scratch_Block scratch(app);
+    
+    View_ID view = get_active_view(app, Access_Always);
+    Buffer_ID buffer_id = view_get_buffer(app, view, Access_Always);
+    Buffer_Cursor cursor = buffer_compute_cursor(app, buffer_id, seek_pos(view_get_cursor_pos(app, view)));
+    //i64 linenum = get_line_number_from_pos(app, view_get_buffer(app, view, Access_Always), view_get_cursor_pos(app, view));
+    
+    String_Const_u8 hot = get_directory_for_buffer(app, scratch, buffer_id);
+    if (hot.size == 0) {
+        //NOTE push_hot_directory() gets current hot directory (I always think it's setting it)...
+        hot = push_hot_directory(app, scratch); //use current hot directory if looking at *scratch* for example
+    }    
+    String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer_id);
+    if (file_name.size > 0) {
+        String_Const_u8 command = push_stringf(scratch, "10x %.*s N10X.Editor.SetCursorPos((%lld,%lld))", string_expand(file_name), cursor.col-1, cursor.line-1);
+        print_message(app, command);
+        exec_system_command(app, 0, buffer_identifier(0), hot, command, 0);
+    }
+}
+ 
 
 CUSTOM_COMMAND_SIG(luis_escape)
 CUSTOM_DOC("escape key")
@@ -111,8 +143,7 @@ CUSTOM_DOC("set mark")
 internal b32
 strmatch_so_far(String_Const_u8 a, String_Const_u8 b, i32 count)
 {
-    if(a.size >= count && b.size >= count)
-    {
+    if (a.size >= count && b.size >= count) {
         for(i32 i = 0; i < count; i += 1)
         {
             if(a.str[i] != b.str[i])	return false;
@@ -171,6 +202,32 @@ CUSTOM_DOC("writes {}")
     //global_history_edit_group_end(app);
     #endif  
 }
+
+CUSTOM_COMMAND_SIG(luis_open_up_braces) 
+CUSTOM_DOC("open braces up") {
+    
+    View_ID view = get_active_view(app, Access_ReadWriteVisible);
+    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
+    i64 cursor_pos = view_get_cursor_pos(app, view); 
+    
+    i64 new_pos = 0;
+    seek_string_insensitive_backward(app, buffer, cursor_pos, 0, SCu8("{"), &new_pos);
+    if (new_pos >= 0) {
+        new_pos += 1; //we want it to right of {
+        History_Group hgroup = history_group_begin(app, buffer);
+        
+        String_Const_u8 to_insert = SCu8("\n\n");
+        b32 edit_success = buffer_replace_range(app, buffer, Ii64(new_pos), to_insert); 
+        if (edit_success) {
+            view_set_cursor_and_preferred_x(app, view, seek_pos(new_pos + to_insert.size));
+            auto_indent_buffer(app, buffer, Ii64_size(new_pos, to_insert.size));
+            move_up(app);
+            auto_indent_line_at_cursor(app);    
+        }
+        
+        history_group_end(hgroup);
+    }
+} 
 
 CUSTOM_COMMAND_SIG(luis_indent_range)
 CUSTOM_DOC("indent_range") {
@@ -355,7 +412,8 @@ CUSTOM_DOC("go end of visual line") {
     view_set_cursor_and_preferred_x(app, view, seek_pos(range.max));
 }
 
-CUSTOM_COMMAND_SIG(luis_cut_line) 
+
+CUSTOM_COMMAND_SIG(emacs_kill_line) 
 CUSTOM_DOC("Emacs-style kill line") {
     View_ID view = get_active_view(app, Access_Always);
     Buffer_ID buffer_id = view_get_buffer(app, view, Access_Always);
@@ -364,8 +422,26 @@ CUSTOM_DOC("Emacs-style kill line") {
     i64 end     = get_line_end_pos(app, buffer_id, linenum);
     
     if (end > pos) {
-        view_set_mark(app, view, seek_pos(end));
-        cut(app);
+        if (g_last_executed_command == emacs_kill_line) { //append to thing
+            Scratch_Block scratch(app);
+            String_Const_u8 prev_copy = get_clipboard_index(&clipboard0, 0);
+            Range_i64 range = {pos, end};
+            String_Const_u8 range_text = push_buffer_range(app, scratch, buffer_id, range);
+            String_Const_u8 new_copy  = push_stringf(scratch, "%.*s%.*s", string_expand(prev_copy), string_expand(range_text));
+            
+            clipboard_post(0, new_copy);
+            buffer_replace_range(app, buffer_id, range, string_u8_empty);
+        } else {
+            view_set_mark(app, view, seek_pos(end));
+            cut(app);    
+        }
+        
+    } else if (end == pos) {
+        Scratch_Block scratch(app);
+        String_Const_u8 prev_copy = get_clipboard_index(&clipboard0, 0);
+        String_Const_u8 new_copy  = push_stringf(scratch, "%.*s\n", string_expand(prev_copy));
+        clipboard_post(0, new_copy);
+        delete_char(app);
     }
 }
 
@@ -662,7 +738,23 @@ luis_find_build_view(Application_Links *app) {
     return build_view;
 }
 
-CUSTOM_COMMAND_SIG(luis_close_panel)
+CUSTOM_COMMAND_SIG(luis_close_all_other_panels)
+CUSTOM_DOC("Close all panels except active one") {
+    View_ID active_view = get_active_view(app, Access_Always);
+    for(View_ID v = get_view_next(app, 0, Access_Always); v; v = get_view_next(app, v, Access_Always)) {
+        if (v != active_view) {
+            view_close(app, v);    
+        }
+    }
+}
+
+CUSTOM_COMMAND_SIG(luis_close_current_panel)
+CUSTOM_DOC("Close current panel") {
+    View_ID active_view = get_active_view(app, Access_Always);
+    view_close(app, active_view);
+}
+
+CUSTOM_COMMAND_SIG(luis_close_peek_or_active_panel)
 CUSTOM_DOC("Close panel. Peek first.") {
     
     View_ID active_view = get_active_view(app, Access_Always);
@@ -1384,6 +1476,8 @@ CUSTOM_DOC("Show code indexes for all buffer") {
 
 
 
+
+
 CUSTOM_COMMAND_SIG(luis_list_functions_all_buffers)
 CUSTOM_DOC("Show code indexes for all buffer") {
     Scratch_Block scratch(app);
@@ -1461,6 +1555,166 @@ CUSTOM_DOC("Show code indexes for all buffer") {
         view_set_buffer(app, view, note->file->buffer, 0);
         view_set_cursor_and_preferred_x(app, view, seek_pos(note->pos.first));
         //luis_center_view_top(app);
+    }
+}
+
+function void
+do_lister_select_note_overload(Application_Links *app, String_Const_u8 init_note_text,
+                               View_ID init_view, Buffer_ID init_buffer, i64 init_cursor, Buffer_Scroll init_view_scroll) {
+    Scratch_Block scratch(app);
+    Lister_Block lister(app, scratch);
+    lister_set_query(lister, "Which one?:");
+    vim_lister_set_default_handlers(lister);
+    lister.lister.current->handlers.navigate = &vim_navigate_and_peek_code_index_entry;
+    
+        //NOTE first_note may be first note but I'm not sure so we do another hash lookup here...
+    Code_Index_Note *first_note = code_index_note_from_string(init_note_text);
+    for (Code_Index_Note *note = first_note; note; note = note->next_in_hash) {
+        if (!string_match(note->text, init_note_text)) continue;
+        
+        Lister_Prealloced_String status  = lister_prealloced(push_buffer_base_name(app, lister.lister.current->arena, note->file->buffer));
+        
+        Scratch_Block temp(app, scratch);
+        String_u8 string = string_u8_push(temp, 512);
+        
+        if (note->note_kind == CodeIndexNote_Function_Definition) {
+            string_append(&string, SCu8("() "));    
+        } else if(note->note_kind == CodeIndexNote_Macro) {
+            string_append(&string, SCu8("## "));    
+        } else {
+            string_append(&string, SCu8("<> "));
+        }
+        
+        
+        i32  parent_count = 0;
+        i32  max_parent_count = 64;
+        Code_Index_Nest **parents = push_array_zero(temp, Code_Index_Nest *, max_parent_count);
+        
+        if (parents) for (Code_Index_Nest *parent = note->parent; parent && parent->text.size > 0; parent = parent->parent) {
+            if (parent_count < max_parent_count) {
+                parents[parent_count++] = parent;
+            }
+            else break;
+        }
+        
+        for (i32 i = parent_count - 1; i >= 0; i -= 1) {
+            Code_Index_Nest *nest = parents[i];
+            string_append(&string, nest->text);
+            string_append(&string, SCu8("::"));
+        }
+        
+        string_append(&string, note->text);
+        
+        Lister_Prealloced_String search_string = lister_prealloced(push_string_copy(lister.lister.current->arena, SCu8(string)));
+        lister_add_item(lister, search_string, status, (void*)note, 0);
+    }
+    
+    Lister_Result l_result = vim_run_lister(app, lister);
+    if (l_result.canceled) {
+         //view_set_active(app, active); //should never have changed
+        view_set_buffer(app, init_view, init_buffer, 0);
+        view_set_cursor_and_preferred_x(app, init_view, seek_pos(init_cursor));
+        view_set_buffer_scroll(app, init_view, init_view_scroll, SetBufferScroll_SnapCursorIntoView);
+    } else {
+        View_ID view = get_active_view(app, Access_Always);
+        Code_Index_Note *note = (Code_Index_Note *)l_result.user_data;
+        view_set_buffer(app, view, note->file->buffer, 0);
+        view_set_cursor_and_preferred_x(app, view, seek_pos(note->pos.first));    
+    }
+}
+
+CUSTOM_COMMAND_SIG(luis_list_notes_no_duplicates)
+CUSTOM_DOC("Show code indexes for all buffer with no duplicates") {
+    Scratch_Block scratch(app);
+    Lister_Block lister(app, scratch);
+    lister_set_query(lister, "Code Index:");
+    vim_lister_set_default_handlers(lister);
+    //lister.lister.current->handlers.navigate = &vim_navigate_and_peek_code_index_entry;
+    
+    code_index_lock();
+    for (Buffer_ID buffer = get_buffer_next(app, 0, Access_Always); buffer; buffer = get_buffer_next(app, buffer, Access_Always)) {  
+        Code_Index_File *file = code_index_get_file(buffer);
+        if(!file) continue;
+        
+        Lister_Prealloced_String status  = lister_prealloced(push_buffer_base_name(app, lister.lister.current->arena, buffer));
+        for(i32 note_index = 0; note_index < file->note_array.count; note_index += 1) {
+            Code_Index_Note *note = file->note_array.ptrs[note_index];
+            
+            if (note->note_kind == CodeIndexNote_Function_Definition ||
+                note->note_kind == CodeIndexNote_Type_Definition     ||
+                note->note_kind == CodeIndexNote_Macro)
+            {
+                Scratch_Block temp(app, scratch);
+                String_u8 string = string_u8_push(temp, 512);
+                
+                if (note->note_kind == CodeIndexNote_Function_Definition) {
+                    string_append(&string, SCu8("() "));    
+                } else if(note->note_kind == CodeIndexNote_Macro) {
+                    string_append(&string, SCu8("## "));    
+                } else {
+                    string_append(&string, SCu8("<> "));
+                }
+                
+                
+                i32  parent_count = 0;
+                i32  max_parent_count = 64;
+                Code_Index_Nest **parents = push_array_zero(temp, Code_Index_Nest *, max_parent_count);
+                
+                if (parents) for (Code_Index_Nest *parent = note->parent; parent && parent->text.size > 0; parent = parent->parent) {
+                    if (parent_count < max_parent_count) {
+                        parents[parent_count++] = parent;
+                    }
+                    else break;
+                }
+                
+                for (i32 i = parent_count - 1; i >= 0; i -= 1) {
+                    Code_Index_Nest *nest = parents[i];
+                    string_append(&string, nest->text);
+                    string_append(&string, SCu8("::"));
+                }
+                
+                //Lister_Prealloced_String status = {};
+                string_append(&string, note->text);
+                
+                
+                //TODO do something not stupid to remove duplicates...
+                bool string_already_added = false;
+                for (auto prev_item = lister.lister.current->options.first; 
+                     prev_item; 
+                     prev_item = prev_item->next) {
+                    if (string_match(string.string, prev_item->string)) {
+                        string_already_added = true;
+                        break;
+                    }
+                }
+                if (string_already_added) continue;
+                
+                Lister_Prealloced_String search_string = lister_prealloced(push_string_copy(lister.lister.current->arena, SCu8(string)));
+                lister_add_item(lister, search_string, status, (void*)note, 0);
+            }
+        }
+    }
+    code_index_unlock();
+    
+    
+    View_ID init_view = get_active_view(app, Access_ReadVisible);
+    luis_view_clear_flags(app, init_view, VIEW_NOTEPAD_MODE_MARK_SET);
+    Buffer_ID init_buffer = view_get_buffer(app, init_view, Access_ReadVisible);
+    i64 init_cursor = view_get_cursor_pos(app, init_view);
+    Buffer_Scroll init_view_scroll = view_get_buffer_scroll (app, init_view);
+    
+    
+    Lister_Result l_result = vim_run_lister(app, lister);
+    if (l_result.canceled) {
+        //view_set_active(app, active); //should never have changed
+        view_set_buffer(app, init_view, init_buffer, 0);
+        view_set_cursor_and_preferred_x(app, init_view, seek_pos(init_cursor));
+        view_set_buffer_scroll(app, init_view, init_view_scroll, SetBufferScroll_SnapCursorIntoView);
+    } else if (l_result.user_data) {
+        //run lister all all overloads now
+        
+        Code_Index_Note *note_result = (Code_Index_Note *)l_result.user_data;
+        do_lister_select_note_overload(app, note_result->text, init_view, init_buffer, init_cursor, init_view_scroll);
     }
 }
 
@@ -2354,32 +2608,27 @@ luis_isearch(Application_Links *app, Scan_Direction start_scan, i64 first_pos, S
     b32 save_search_string = true;
     b32 move_to_new_pos = false;
     User_Input in = {};
-    for (;;)
-    {
+    for (;;) {
         bar.prompt = (scan == Scan_Forward) ? string_u8_litexpr("I-Search: ") : string_u8_litexpr("Reverse-I-Search: ");
         isearch__update_highlight(app, view, Ii64_size(pos, match_size));
         
         in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
         if (in.abort)	break;
         
-        b32 string_change = false;
-        b32 do_scan_action = false;
-        b32 do_scroll_wheel = false;
+        b32 string_change     = false;
+        b32 do_scan_action    = false;
+        b32 do_scroll_wheel   = false;
         Scan_Direction change_scan = scan;
-        if(in.event.kind == InputEventKind_KeyStroke)
+        if (in.event.kind == InputEventKind_KeyStroke)
         {
             Key_Code code = in.event.key.code;
             b32 ctrl_down = has_modifier(&in.event.key.modifiers, KeyCode_Control);
             
-            if(code == KeyCode_Return || code == KeyCode_Tab)
-            {
-                if(ctrl_down) //append previous search string
-                {
+            if(code == KeyCode_Return || code == KeyCode_Tab) {
+                if(ctrl_down) { //append previous search string
                     bar.string.size = cstring_length(previous_isearch_query);
                     block_copy(bar.string.str, previous_isearch_query, bar.string.size);
-                }
-                else
-                {
+                } else {
                     //u64 size = bar.string.size;
                     //size = clamp_top(size, sizeof(previous_isearch_query) - 1);
                     //block_copy(previous_isearch_query, bar.string.str, size);
@@ -2387,30 +2636,27 @@ luis_isearch(Application_Links *app, Scan_Direction start_scan, i64 first_pos, S
                     move_to_new_pos = true;
                     break;
                 }
-            }
-            else if(code == KeyCode_Backspace)
-            {
+            } else if(code == KeyCode_Backspace) {
+                pos = first_pos;
                 if (ctrl_down) {
                     if (bar.string.size > 0){
                         string_change = true;
                         bar.string.size = 0;
+                        match_size = 0;
                     }
                 } else {
                     u64 old_bar_string_size = bar.string.size;
                     bar.string = backspace_utf8(bar.string);
                     string_change = (bar.string.size < old_bar_string_size);
+                    match_size = bar.string.size;
                 }
-            }
-            else
-            {
+            } else {
                 View_Context ctx = view_current_context(app, view);
                 Mapping *mapping = ctx.mapping;
                 Command_Map *map = mapping_get_map(mapping, ctx.map_id);
                 Command_Binding binding = map_get_binding_recursive(mapping, map, &in.event);
-                if (binding.custom != 0)
-                {
-                    if(binding.custom == luis_fsearch || binding.custom == luis_rsearch)
-                    {
+                if (binding.custom != 0) {
+                    if(binding.custom == luis_fsearch || binding.custom == luis_rsearch) {
                         if(binding.custom == luis_fsearch)
                         {
                             change_scan = Scan_Forward;
@@ -2469,33 +2715,29 @@ luis_isearch(Application_Links *app, Scan_Direction start_scan, i64 first_pos, S
             }
             
         }
-        else if(in.event.kind == InputEventKind_TextInsert)
+        else if(in.event.kind == InputEventKind_TextInsert) {
             BAR_APPEND_STRING(to_writable(&in));
-        
-        if (string_change){
-            switch (scan){
-            case Scan_Forward:
-            {
-                i64 new_pos = 0;
-                seek_string_insensitive_forward(app, buffer, pos - 1, 0, bar.string, &new_pos);
-                if (new_pos < buffer_size){
-                    pos = new_pos;
-                    match_size = bar.string.size;
-                }
-            }break;
-            
-            case Scan_Backward:
-            {
-                i64 new_pos = 0;
-                seek_string_insensitive_backward(app, buffer, pos + 1, 0, bar.string, &new_pos);
-                if (new_pos >= 0){
-                    pos = new_pos;
-                    match_size = bar.string.size;
-                }
-            }break;
-            }
         }
-        else if (do_scan_action){
+        
+        if (string_change) switch (scan){
+        case Scan_Forward: {
+            i64 new_pos = 0;
+            seek_string_insensitive_forward(app, buffer, pos - 1, 0, bar.string, &new_pos);
+            if (new_pos < buffer_size){
+                pos = new_pos;
+                match_size = bar.string.size;
+            }
+        } break;
+        
+        case Scan_Backward: {
+            i64 new_pos = 0;
+            seek_string_insensitive_backward(app, buffer, pos + 1, 0, bar.string, &new_pos);
+            if (new_pos >= 0){
+                pos = new_pos;
+                match_size = bar.string.size;
+            }
+        } break;
+        } else if (do_scan_action){
             scan = change_scan;
             switch (scan){
             case Scan_Forward:
@@ -2526,8 +2768,7 @@ luis_isearch(Application_Links *app, Scan_Direction start_scan, i64 first_pos, S
     
     view_disable_highlight_range(app, view);
     
-    if (move_to_new_pos)
-    {
+    if (move_to_new_pos) {
         view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
         View_Buffer_Location *loc = view_get_prev_buffer_location(app, view);
         if(loc)
@@ -2535,12 +2776,12 @@ luis_isearch(Application_Links *app, Scan_Direction start_scan, i64 first_pos, S
             loc->buffer = buffer;
             loc->cursor = first_pos;
         }
-    }
-    else 
+    }  else {
         view_set_cursor_and_preferred_x(app, view, seek_pos(first_pos));
+    } 
+        
     
-    if(save_search_string)
-    {
+    if(save_search_string) {
         u64 size = bar.string.size;
         size = clamp_top(size, sizeof(previous_isearch_query) - 1);
         block_copy(previous_isearch_query, bar.string.str, size);

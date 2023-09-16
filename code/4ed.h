@@ -16,6 +16,7 @@
 
 struct Plat_Settings{
     char *custom_dll;
+    char *init_file_to_open;
     b8 custom_dll_is_strict;
     b8 fullscreen_window;
     

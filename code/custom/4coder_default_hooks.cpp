@@ -30,7 +30,7 @@ CUSTOM_DOC("Default command for responding to a startup event")
     }
 }
 
-CUSTOM_COMMAND_SIG(default_try_exit)
+CUSTOM_COMMAND_SIG(__default_try_exit)
 CUSTOM_DOC("Default command for responding to a try-exit event")
 {
     User_Input input = get_current_input(app);
