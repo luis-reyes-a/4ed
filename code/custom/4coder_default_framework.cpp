@@ -1025,7 +1025,8 @@ function void
 default_framework_init(Application_Links *app){
     Thread_Context *tctx = get_thread_context(app);
     async_task_handler_init(app, &global_async_system);
-    clipboard_init(get_base_allocator_system(), /*history_depth*/ 64, &clipboard0);
+    //clipboard_init(get_base_allocator_system(), /*history_depth*/ 64, &clipboard0);
+    clipboard_init(get_base_allocator_system(), /*history_depth*/ 16, &clipboard0);
     code_index_init();
     buffer_modified_set_init();
     Profile_Global_List *list = get_core_profile_list(app);

@@ -8,6 +8,22 @@ CUSTOM_DOC("Toggle drop shadows") {
     
 }
 
+
+CUSTOM_COMMAND_SIG(luis_eat_whitespace_backwards)
+CUSTOM_DOC("eat whitespace forward from cursor") {
+    View_ID view = get_active_view(app, Access_Always);
+    Buffer_ID buffer_id = view_get_buffer(app, view, Access_Always);
+    i64 cursor_pos = view_get_cursor_pos(app, view);
+    
+    i64 start_pos = scan(app, &boundary_non_whitespace, buffer_id, Scan_Backward, cursor_pos);
+    
+    if (start_pos != cursor_pos) {
+        Range_i64 range = {start_pos, cursor_pos};
+        buffer_replace_range(app, buffer_id, range, string_u8_litexpr(""));
+    }
+}
+
+
 //stolen from BYP, pretty cool!
 CUSTOM_COMMAND_SIG(show_file_in_explorer)
 CUSTOM_DOC("Opens file explorer in hot directory") {
@@ -75,9 +91,9 @@ CUSTOM_DOC("Open current file in 10x") {
  
 
 CUSTOM_COMMAND_SIG(luis_escape)
-CUSTOM_DOC("escape key")
-{
+CUSTOM_DOC("escape key") {
     //does nothing, hanlded by view_input_handler
+    g_mark_is_active = false;
 }
 
 CUSTOM_COMMAND_SIG(luis_toggle_modal_mode)
@@ -88,6 +104,9 @@ CUSTOM_DOC("Toggles modal mode") {
     Buffer_ID buffer_id = view_get_buffer(app, view, Access_Always);
     update_buffer_bindings_for_modal_toggling(app, buffer_id);
 }
+
+
+
 
 
 CUSTOM_COMMAND_SIG(luis_interactive_open_or_new)  
@@ -131,14 +150,72 @@ internal void
 luis_set_mark(Application_Links *app, View_ID view, i64 pos) {
     luis_view_set_flags(app, view, VIEW_NOTEPAD_MODE_MARK_SET);
     view_set_mark(app, view, seek_pos(pos));
+    
+    // NOTE we have to do this because snap_mark_to_cursor will forget where we were after doing
+    // certain edits (like clearning a selection - often times I want to go back after the clear)
+    Managed_Scope scope = view_get_managed_scope(app, view);
+    i64 *prev_mark_pos = scope_attachment(app, scope, view_prev_mark_pos_before_snap_to_cursor, i64);
+    if (prev_mark_pos) {
+        *prev_mark_pos = view_get_mark_pos(app, view);
+    }
+
+    g_mark_is_active = true;
 }
 
 CUSTOM_COMMAND_SIG(luis_set_mark)
-CUSTOM_DOC("set mark")
-{
+CUSTOM_DOC("set mark") {
     View_ID view = get_active_view(app, Access_Always);
     luis_set_mark(app, view, view_get_cursor_pos(app, view));
 }
+
+CUSTOM_COMMAND_SIG(luis_select_word_under_cursor)
+CUSTOM_DOC("Select text at cursor") {
+    View_ID view = get_active_view(app, Access_Always);
+    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
+    i64 pos = view_get_cursor_pos(app, view);
+    Token *token = get_token_from_pos(app, buffer, pos);
+    if (token && (token->size > 0)) { // && (token->kind != TokenBaseKind_Whitespace)) {
+        Range_i64 range = Ii64(token);
+        luis_set_mark(app, view, range.min);
+        view_set_cursor(app, view, seek_pos(range.max));
+    }
+    // TODO make this work for normal text files that don't have tokens
+}
+
+CUSTOM_COMMAND_SIG(luis_delete_char)
+CUSTOM_DOC("delete char") {
+    if (g_mark_is_active) {
+        delete_range(app);
+        g_mark_is_active = false;
+    } else {
+        delete_char(app);
+    }
+}
+
+CUSTOM_COMMAND_SIG(luis_backspace_char)
+CUSTOM_DOC("delete char") {
+    if (g_mark_is_active) {
+        delete_range(app);
+        g_mark_is_active = false;
+    } else {
+        backspace_char(app);
+    }
+}
+
+CUSTOM_COMMAND_SIG(emacs_cut)
+CUSTOM_DOC("emacs cut or 'kill'") {
+    cut(app);
+    g_mark_is_active = false;
+}
+
+CUSTOM_COMMAND_SIG(emacs_copy)
+CUSTOM_DOC("emacs cut or 'kill'") {
+    copy(app);
+    g_mark_is_active = false;
+}
+
+
+
 
 internal b32
 strmatch_so_far(String_Const_u8 a, String_Const_u8 b, i32 count)
@@ -412,6 +489,23 @@ CUSTOM_DOC("go end of visual line") {
     view_set_cursor_and_preferred_x(app, view, seek_pos(range.max));
 }
 
+// CUSTOM_COMMAND_SIG(emacs_cut_line)
+// CUSTOM_DOC("kill line like emacs") {
+//     View_ID view = get_active_view(app, Access_ReadWriteVisible);
+//     Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
+//     i64 cursor_pos = view_get_cursor_pos(app, view);
+//     i64 linenum    = get_line_number_from_pos(app, buffer, pos);
+
+//     Range_i64 range = {};
+//     range.start = cursor_pos;
+//     result.end = get_line_end_pos(app, buffer, linenum) - 1;
+//     if (result.end > result.start) {
+//         if (clipboard_post_buffer_range(app, 0, buffer, range)){
+//             buffer_replace_range(app, buffer, range, string_u8_empty);
+//         }    
+//     }    
+// }
+
 
 CUSTOM_COMMAND_SIG(emacs_kill_line) 
 CUSTOM_DOC("Emacs-style kill line") {
@@ -432,8 +526,10 @@ CUSTOM_DOC("Emacs-style kill line") {
             clipboard_post(0, new_copy);
             buffer_replace_range(app, buffer_id, range, string_u8_empty);
         } else {
-            view_set_mark(app, view, seek_pos(end));
-            cut(app);    
+            Range_i64 range = {pos, end};
+            if (clipboard_post_buffer_range(app, 0, buffer_id, range)){
+                buffer_replace_range(app, buffer_id, range, string_u8_empty);
+            }
         }
         
     } else if (end == pos) {
@@ -453,7 +549,55 @@ luis_select_scope(Application_Links *app, View_ID view, Range_i64 range){
     no_mark_snap_to_cursor(app, view);
 }
 
-#if 0
+CUSTOM_COMMAND_SIG(emacs_swap_cursor_mark)
+CUSTOM_DOC("swap cursor and mark (works with notepad mode)") {
+    View_ID view = get_active_view(app, Access_ReadVisible);
+    i64 cursor_pos = view_get_cursor_pos(app, view);
+    i64 mark_pos = view_get_mark_pos(app, view);
+    
+    if (cursor_pos == mark_pos) { //we're probably in notepad mode... swap with last stored mark
+        // TODO we can probably just always use this codepath, our mark should be used everywhere it seems
+        Managed_Scope scope = view_get_managed_scope(app, view);
+        i64 *prev_mark_pos = scope_attachment(app, scope, view_prev_mark_pos_before_snap_to_cursor, i64);
+        if (prev_mark_pos) {
+            
+            auto seek = seek_pos(*prev_mark_pos);
+            view_set_cursor_and_preferred_x(app, view, seek);
+            view_set_mark(app, view, seek);
+            
+            *prev_mark_pos = cursor_pos;
+        }
+    } else {
+        cursor_mark_swap(app);
+        
+        Managed_Scope scope = view_get_managed_scope(app, view);
+        i64 *prev_mark_pos = scope_attachment(app, scope, view_prev_mark_pos_before_snap_to_cursor, i64);
+        if (prev_mark_pos) {
+            *prev_mark_pos = cursor_pos;
+        }
+    }
+
+    g_mark_is_active = true;
+}
+
+CUSTOM_COMMAND_SIG(luis_reselect_selection)
+CUSTOM_DOC("create selection where cursor is and mark was") {
+    View_ID view = get_active_view(app, Access_Always);
+    i64 cursor_pos = view_get_cursor_pos(app, view);
+    i64 mark_pos = view_get_mark_pos(app, view);
+    
+    if (cursor_pos == mark_pos) {
+        
+        Managed_Scope scope = view_get_managed_scope(app, view);
+        i64 *prev_mark_pos = scope_attachment(app, scope, view_prev_mark_pos_before_snap_to_cursor, i64);
+        if (prev_mark_pos) {
+            luis_set_mark(app, view, *prev_mark_pos);    
+        }
+        
+    }
+}
+
+#if 1
 CUSTOM_COMMAND_SIG(luis_select_surrounding_scope)
 CUSTOM_DOC("select surrounding scope") {
     View_ID view = get_active_view(app, Access_ReadVisible);
@@ -490,6 +634,45 @@ CUSTOM_DOC("select surrounding scope") {
     }
 }
 #endif
+
+CUSTOM_COMMAND_SIG(luis_select_scope_contents)
+CUSTOM_DOC("if you have a scope selected, select just the contents of it") {
+    View_ID view = get_active_view(app, Access_ReadVisible);
+    i64 cursor_pos = view_get_cursor_pos(app, view);
+    i64 mark_pos   = view_get_mark_pos(app, view);
+    
+    if (cursor_pos == mark_pos) {
+        luis_select_surrounding_scope(app);    
+        cursor_pos = view_get_cursor_pos(app, view);
+        mark_pos   = view_get_mark_pos(app, view);
+    }
+    
+    
+    if (cursor_pos == mark_pos) {
+        // no scope to select
+        return;
+    }
+    
+    
+    
+    if (cursor_pos > mark_pos) {
+        //cursor initially below mark
+        emacs_swap_cursor_mark(app);
+    }
+    
+    move_down(app);
+    luis_home(app);
+    
+    emacs_swap_cursor_mark(app);
+    
+    move_up(app);
+    luis_end(app);
+    
+    if (cursor_pos < mark_pos) {
+        //cursor initially above mark
+        emacs_swap_cursor_mark(app);
+    }
+}
 
 CUSTOM_COMMAND_SIG(luis_view_peek_as_split_window)
 CUSTOM_DOC("view peek buffer in split window") {
@@ -656,7 +839,10 @@ CUSTOM_DOC("Deletes all whitespace at cursor, going backwards")
     View_ID view = get_active_view(app, Access_ReadWriteVisible);
     Buffer_ID buffer_id = view_get_buffer(app, view, Access_ReadWriteVisible);
     i64 cursor_pos = view_get_cursor_pos(app, view);
-    i64 mark_pos = view_get_mark_pos(app, view);
+    i64 mark_pos = cursor_pos;
+    if (g_mark_is_active) { // this command only works if we have emacs-style active-mark behaviuor
+        mark_pos = view_get_mark_pos(app, view);
+    } 
     b32 add_comments;
     {
         Range_i64 line_range = get_visual_line_start_end_pos(app, view, get_line_number_from_pos(app, buffer_id, cursor_pos));
@@ -667,31 +853,37 @@ CUSTOM_DOC("Deletes all whitespace at cursor, going backwards")
     range.start = Min(cursor_pos, mark_pos);
     range.end   = Max(cursor_pos, mark_pos);
     Range_i64 lines = get_line_range_from_pos_range(app, buffer_id, range);
-    if(!is_valid_line_range(app, buffer_id, lines))	return;
+    if (!is_valid_line_range(app, buffer_id, lines))	return;
+
+    if (lines.start == lines.end) { // single line comment, move cursor down after toggle
+        if (!line_is_blank(app, buffer_id, lines.start)) {
+            i64 pos = get_visual_line_start_end_pos(app, view, lines.start).min;
+            if (add_comments) {
+                buffer_replace_range(app, buffer_id, Ii64(pos), SCu8("// "));
+            } else {
+                buffer_replace_range(app, buffer_id, Ii64(pos, pos + 3), string_u8_empty);
+            }
+        }
+        move_down(app);
+        return;
+    } 
     
     History_Group new_history_group = history_group_begin(app, buffer_id);
-    for(i64 line = lines.start; line <= lines.end; line += 1)
-    {
-        if(!line_is_blank(app, buffer_id, line))
-        {
+    for(i64 line = lines.start; line <= lines.end; line += 1) {
+        if(!line_is_blank(app, buffer_id, line)) {
             //i64 pos = get_line_start_pos(app, buffer_id, line);
             //i64 pos = get_visual_line_start(app, view, buffer_id, line);
             i64 pos = get_visual_line_start_end_pos(app, view, line).min;
             
-            u8  test[256];
-            buffer_read_range(app, buffer_id, Ii64(pos, pos + 256), test);
-            if(add_comments)
-            {
-                if(!c_line_comment_starts_at_position(app, buffer_id, pos))
-                {
-                    buffer_replace_range(app, buffer_id, Ii64(pos), SCu8("//"));
+            // u8  test[256];
+            // buffer_read_range(app, buffer_id, Ii64(pos, pos + 256), test);
+            if (add_comments) {
+                if (!c_line_comment_starts_at_position(app, buffer_id, pos)) {
+                    buffer_replace_range(app, buffer_id, Ii64(pos), SCu8("// "));
                 }
-            }
-            else
-            {
-                if(c_line_comment_starts_at_position(app, buffer_id, pos))
-                {
-                    buffer_replace_range(app, buffer_id, Ii64(pos, pos + 2), string_u8_empty);
+            } else {
+                if (c_line_comment_starts_at_position(app, buffer_id, pos)) {
+                    buffer_replace_range(app, buffer_id, Ii64(pos, pos + 3), string_u8_empty);
                 }
             }
         }
@@ -972,8 +1164,10 @@ CUSTOM_DOC("build") {
     Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
     
     View_ID build_view = luis_find_build_view(app);
-    if (!build_view)
+    if (!build_view) {
         build_view = luis_get_or_split_peek_window(app, view, ViewSplit_Bottom);
+    }
+        
     
     if (build_view) {
         standard_search_and_build(app, build_view, buffer);
@@ -1002,6 +1196,25 @@ CUSTOM_DOC("build") {
             //view_set_buffer(app, build_view, comp_buffer, 0);
         }
         #endif
+    }
+}
+
+CUSTOM_COMMAND_SIG(luis_open_build_panel)
+CUSTOM_DOC("open build panel") {
+    View_ID build_view = luis_find_build_view(app);
+    if (!build_view) {
+        Buffer_ID comp_buffer = get_comp_buffer(app);
+        if (comp_buffer) {
+            View_ID view = get_active_view(app, Access_Always);
+            build_view = luis_get_or_split_peek_window(app, view, ViewSplit_Bottom);
+            
+            view_set_buffer(app, build_view, comp_buffer, 0);
+            //view_set_cursor(app, view, seek_pos(0));
+            
+            set_fancy_compilation_buffer_font(app);
+        	//block_zero_struct(&prev_location);
+        	//lock_jump_buffer(app, string_u8_litexpr("*compilation*"));    
+        }
     }
 }
 
@@ -1114,7 +1327,7 @@ vim_navigate_and_peek_code_index_entry(Application_Links *app, View_ID view, Lis
     lister_update_selection_values(lister);
     
     
-    if (in_range(0, lister->raw_item_index, lister->options.count)) {
+    if (lister->raw_item_index >= 0 && lister->raw_item_index < lister->options.count) {
         Code_Index_Note *note = (Code_Index_Note *)lister_get_user_data(lister, lister->raw_item_index);
         Set_Buffer_Flag flags = SetBuffer_KeepOriginalGUI;
         view_set_buffer(app, view, note->file->buffer, flags);
@@ -1132,8 +1345,8 @@ CUSTOM_DOC("Show code indexes for buffer") {
     Scratch_Block scratch(app);
     Lister_Block lister(app, scratch);
     lister_set_query(lister, "Code Index:");
-    //lister_set_default_handlers(lister);
-    vim_lister_set_default_handlers(lister);
+    lister_set_default_handlers(lister);
+    //vim_lister_set_default_handlers(lister);
     lister.lister.current->handlers.navigate = &vim_navigate_and_peek_code_index_entry;
     
     code_index_lock();
@@ -1204,7 +1417,7 @@ CUSTOM_DOC("Show code indexes for buffer") {
     Buffer_Scroll init_view_scroll = view_get_buffer_scroll (app, init_view);
     
     
-    Lister_Result l_result = vim_run_lister(app, lister);
+    Lister_Result l_result = run_lister(app, lister);
     if (l_result.canceled) {
         //view_set_active(app, active); //should never have changed
         view_set_buffer(app, init_view, init_buffer, 0);
@@ -1380,8 +1593,8 @@ CUSTOM_DOC("Show code indexes for all buffer") {
     Scratch_Block scratch(app);
     Lister_Block lister(app, scratch);
     lister_set_query(lister, "Code Index:");
-    //lister_set_default_handlers(lister);
-    vim_lister_set_default_handlers(lister);
+    lister_set_default_handlers(lister);
+    //vim_lister_set_default_handlers(lister);
     lister.lister.current->handlers.navigate = &vim_navigate_and_peek_code_index_entry;
     
     code_index_lock();
@@ -1446,7 +1659,7 @@ CUSTOM_DOC("Show code indexes for all buffer") {
     Buffer_Scroll init_view_scroll = view_get_buffer_scroll (app, init_view);
     
     
-    Lister_Result l_result = vim_run_lister(app, lister);
+    Lister_Result l_result = run_lister(app, lister);
     if (l_result.canceled) {
         //view_set_active(app, active); //should never have changed
         view_set_buffer(app, init_view, init_buffer, 0);
@@ -1483,8 +1696,8 @@ CUSTOM_DOC("Show code indexes for all buffer") {
     Scratch_Block scratch(app);
     Lister_Block lister(app, scratch);
     lister_set_query(lister, "Procedure:");
-    //lister_set_default_handlers(lister);
-    vim_lister_set_default_handlers(lister);
+    lister_set_default_handlers(lister);
+    //vim_lister_set_default_handlers(lister);
     lister.lister.current->handlers.navigate = &vim_navigate_and_peek_code_index_entry;
     
     code_index_lock();
@@ -1536,7 +1749,7 @@ CUSTOM_DOC("Show code indexes for all buffer") {
     i64 init_cursor = view_get_cursor_pos(app, init_view);
     Buffer_Scroll init_view_scroll = view_get_buffer_scroll (app, init_view);
     
-    Lister_Result l_result = vim_run_lister(app, lister);
+    Lister_Result l_result = run_lister(app, lister);
     if (l_result.canceled) {
         //view_set_active(app, active); //should never have changed
         view_set_buffer(app, init_view, init_buffer, 0);
@@ -1564,7 +1777,8 @@ do_lister_select_note_overload(Application_Links *app, String_Const_u8 init_note
     Scratch_Block scratch(app);
     Lister_Block lister(app, scratch);
     lister_set_query(lister, "Which one?:");
-    vim_lister_set_default_handlers(lister);
+    lister_set_default_handlers(lister);
+    //vim_lister_set_default_handlers(lister);
     lister.lister.current->handlers.navigate = &vim_navigate_and_peek_code_index_entry;
     
         //NOTE first_note may be first note but I'm not sure so we do another hash lookup here...
@@ -1609,7 +1823,7 @@ do_lister_select_note_overload(Application_Links *app, String_Const_u8 init_note
         lister_add_item(lister, search_string, status, (void*)note, 0);
     }
     
-    Lister_Result l_result = vim_run_lister(app, lister);
+    Lister_Result l_result = run_lister(app, lister);
     if (l_result.canceled) {
          //view_set_active(app, active); //should never have changed
         view_set_buffer(app, init_view, init_buffer, 0);
@@ -1628,7 +1842,9 @@ CUSTOM_DOC("Show code indexes for all buffer with no duplicates") {
     Scratch_Block scratch(app);
     Lister_Block lister(app, scratch);
     lister_set_query(lister, "Code Index:");
-    vim_lister_set_default_handlers(lister);
+    lister_set_default_handlers(lister);
+    lister_set_default_handlers(lister);
+    //vim_lister_set_default_handlers(lister);
     //lister.lister.current->handlers.navigate = &vim_navigate_and_peek_code_index_entry;
     
     code_index_lock();
@@ -1704,7 +1920,7 @@ CUSTOM_DOC("Show code indexes for all buffer with no duplicates") {
     Buffer_Scroll init_view_scroll = view_get_buffer_scroll (app, init_view);
     
     
-    Lister_Result l_result = vim_run_lister(app, lister);
+    Lister_Result l_result = run_lister(app, lister);
     if (l_result.canceled) {
         //view_set_active(app, active); //should never have changed
         view_set_buffer(app, init_view, init_buffer, 0);
@@ -1894,6 +2110,518 @@ CUSTOM_DOC("print scope variables") {
         }
     }
 }
+
+internal void
+luis_lister_navigate_and_peek_buffer_entry(Application_Links *app, View_ID view, Lister *lister, i32 delta) {
+    //lister__navigate__default
+    i32 new_index = lister->item_index + delta;
+    if (new_index < 0 && lister->item_index == 0){
+        lister->item_index = lister->filtered.count - 1;
+    } else if (new_index >= lister->filtered.count &&
+             lister->item_index == lister->filtered.count - 1) {
+        lister->item_index = 0;
+    } else {
+        lister->item_index = clamp(0, new_index, lister->filtered.count - 1);
+    }
+
+    if (delta) {
+        lister->set_vertical_focus_to_item = true;
+        lister_update_selection_values(lister);    
+    } 
+    
+    
+    // we want to do this even if delta isn't 0 because we call navigate on first entering run_lister
+    if (lister->raw_item_index >= 0 &&
+        lister->raw_item_index <  lister->options.count) {
+        Buffer_ID buffer = (Buffer_ID)PtrAsInt(lister_get_user_data(lister, lister->raw_item_index));
+        Set_Buffer_Flag flags = SetBuffer_KeepOriginalGUI;
+        view_set_buffer(app, view, buffer, flags);
+        
+        //better to just keep the cursor where we had left it off previously for familiarity
+        //Buffer_Seek seek = seek_pos(0);
+        //view_set_cursor_and_preferred_x(app, view, seek);
+        //view_set_mark(app, view, seek);
+    }
+    
+}
+
+CUSTOM_UI_COMMAND_SIG(ctrl_tab_switch_buffer)
+CUSTOM_DOC("Alt-tab behaviour way of switching buffer") {
+    Lister_Handlers handlers = lister_get_default_handlers();
+    handlers.refresh = generate_all_buffers_list;
+    handlers.navigate = luis_lister_navigate_and_peek_buffer_entry;
+    Lister_Result l_result = run_lister_with_refresh_handler(app, "Switch:", handlers, true);
+    Buffer_ID buffer = 0;
+    if (!l_result.canceled) {
+        buffer = (Buffer_ID)(PtrAsInt(l_result.user_data));
+        if (buffer != 0){
+            View_ID view = get_this_ctx_view(app, Access_Always);
+            view_set_buffer(app, view, buffer, 0);
+        }
+    }
+}
+
+// original draws lister to take up entire view screen
+// I like it to take up bottom of screen and show preview/results on top
+static bool luis_custom_lister_is_being_drawn = false;
+static f32  luis_lister_rect_top_y = 0.0f;
+
+function void
+lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
+    Scratch_Block scratch(app);
+    
+    Lister *lister = view_get_lister(app, view);
+    if (lister == 0){
+        return;
+    }
+
+    
+
+    View_ID active_view = get_active_view(app, Access_Always);
+    b32 is_active_view = (active_view == view);
+
+    Face_ID face_id = get_face_id(app, 0);
+    Face_Metrics metrics = get_face_metrics(app, face_id);
+    f32 line_height = metrics.line_height;
+    f32 block_height = lister_get_block_height(line_height);
+    f32 text_field_height = lister_get_text_field_height(line_height);
+
+    
+
+    Rect_f32 view_rect = view_get_screen_rect(app, view);
+    Rect_f32 global_rect = global_get_screen_rectangle(app);
+    Rect_f32 prev_clip = draw_set_clip(app, global_rect);
+
+    Render_Caller_Function *render_caller = (Render_Caller_Function *)get_custom_hook(app, HookID_RenderCaller);
+    render_caller(app, frame_info, view);
+    
+    f32 desired_lister_height = rect_height(view_rect)*.4f;
+    f32 lister_height = Max(block_height*4, desired_lister_height);
+    Rect_f32 big_rect  = rect_split_top_bottom_neg(global_rect, lister_height).max;
+
+    luis_custom_lister_is_being_drawn = true;
+    luis_lister_rect_top_y = big_rect.y0;
+
+    f32 margin_width = 3.0f;
+    Rect_f32 region = rect_inner(big_rect, margin_width);
+    draw_set_clip(app, big_rect);
+
+    FColor margin_color = get_panel_margin_color(is_active_view?UIHighlight_Active:UIHighlight_None);
+    FColor back_color   = fcolor_id(defcolor_back);
+    // Rect_f32 region = rect_inner(view_rect, width);
+    
+    draw_rectangle(app, region, 0.f, fcolor_resolve(back_color));
+    if (margin_width > 0.f){
+        draw_margin(app, global_rect, region, fcolor_resolve(margin_color));
+    }
+    
+    
+    
+    
+    
+    // NOTE(allen): file bar
+    // TODO(allen): What's going on with 'showing_file_bar'? I found it like this.
+    b64 showing_file_bar = false;
+    b32 hide_file_bar_in_ui = def_get_config_b32(vars_save_string_lit("hide_file_bar_in_ui"));
+    if (view_get_setting(app, view, ViewSetting_ShowFileBar, &showing_file_bar) &&
+        showing_file_bar && !hide_file_bar_in_ui){
+        Rect_f32_Pair pair = layout_file_bar_on_top(region, line_height);
+        Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+        draw_file_bar(app, view, buffer, face_id, pair.min);
+        region = pair.max;
+    }
+    
+    Mouse_State mouse = get_mouse_state(app);
+    Vec2_f32 m_p = V2f32(mouse.p);
+    
+    lister->visible_count = (i32)((rect_height(region)/block_height)) - 3;
+    lister->visible_count = clamp_bot(1, lister->visible_count);
+    
+    Rect_f32 text_field_rect = {};
+    Rect_f32 list_rect = {};
+    {
+        Rect_f32_Pair pair = lister_get_top_level_layout(region, text_field_height);
+        text_field_rect = pair.min;
+        list_rect = pair.max;
+    }
+    
+    {
+        Vec2_f32 p = V2f32(text_field_rect.x0 + 3.f, text_field_rect.y0);
+        Fancy_Line text_field = {};
+        push_fancy_string(scratch, &text_field, fcolor_id(defcolor_pop1),
+                          lister->query.string);
+        push_fancy_stringf(scratch, &text_field, " ");
+        p = draw_fancy_line(app, face_id, fcolor_zero(), &text_field, p);
+        
+        // TODO(allen): This is a bit of a hack. Maybe an upgrade to fancy to focus
+        // more on being good at this and less on overriding everything 10 ways to sunday
+        // would be good.
+        block_zero_struct(&text_field);
+        push_fancy_string(scratch, &text_field, fcolor_id(defcolor_text_default),
+                          lister->text_field.string);
+        f32 width = get_fancy_line_width(app, face_id, &text_field);
+        f32 cap_width = text_field_rect.x1 - p.x - 6.f;
+        if (cap_width < width){
+            Rect_f32 prect = draw_set_clip(app, Rf32(p.x, text_field_rect.y0, p.x + cap_width, text_field_rect.y1));
+            p.x += cap_width - width;
+            draw_fancy_line(app, face_id, fcolor_zero(), &text_field, p);
+            draw_set_clip(app, prect);
+        }
+        else{
+            draw_fancy_line(app, face_id, fcolor_zero(), &text_field, p);
+        }
+    }
+    
+    
+    Range_f32 x = rect_range_x(list_rect);
+    draw_set_clip(app, list_rect);
+    
+    // NOTE(allen): auto scroll to the item if the flag is set.
+    f32 scroll_y = lister->scroll.position.y;
+    
+    if (lister->set_vertical_focus_to_item){
+        lister->set_vertical_focus_to_item = false;
+        Range_f32 item_y = If32_size(lister->item_index*block_height, block_height);
+        f32 view_h = rect_height(list_rect);
+        Range_f32 view_y = If32_size(scroll_y, view_h);
+        if (view_y.min > item_y.min || item_y.max > view_y.max){
+            f32 item_center = (item_y.min + item_y.max)*0.5f;
+            f32 view_center = (view_y.min + view_y.max)*0.5f;
+            f32 margin = view_h*.3f;
+            margin = clamp_top(margin, block_height*3.f);
+            if (item_center < view_center){
+                lister->scroll.target.y = item_y.min - margin;
+            }
+            else{
+                f32 target_bot = item_y.max + margin;
+                lister->scroll.target.y = target_bot - view_h;
+            }
+        }
+    }
+    
+    // NOTE(allen): clamp scroll target and position; smooth scroll rule
+    i32 count = lister->filtered.count;
+    Range_f32 scroll_range = If32(0.f, clamp_bot(0.f, count*block_height - block_height));
+    lister->scroll.target.y = clamp_range(scroll_range, lister->scroll.target.y);
+    lister->scroll.target.x = 0.f;
+    
+    Vec2_f32_Delta_Result delta = delta_apply(app, view,
+                                              frame_info.animation_dt, lister->scroll);
+    lister->scroll.position = delta.p;
+    if (delta.still_animating){
+        animate_in_n_milliseconds(app, 0);
+    }
+    
+    lister->scroll.position.y = clamp_range(scroll_range, lister->scroll.position.y);
+    lister->scroll.position.x = 0.f;
+    
+    scroll_y = lister->scroll.position.y;
+    f32 y_pos = list_rect.y0 - scroll_y;
+    
+    i32 first_index = (i32)(scroll_y/block_height);
+    y_pos += first_index*block_height;
+    
+    for (i32 i = first_index; i < count; i += 1){
+        Lister_Node *node = lister->filtered.node_ptrs[i];
+        
+        Range_f32 y = If32(y_pos, y_pos + block_height);
+        y_pos = y.max;
+        
+        Rect_f32 item_rect = Rf32(x, y);
+        Rect_f32 item_inner = rect_inner(item_rect, 3.f);
+        
+        b32 hovered = rect_contains_point(item_rect, m_p);
+        UI_Highlight_Level highlight = UIHighlight_None;
+        if (node == lister->highlighted_node){
+            highlight = UIHighlight_Active;
+        }
+        else if (node->user_data == lister->hot_user_data){
+            if (hovered){
+                highlight = UIHighlight_Active;
+            }
+            else{
+                highlight = UIHighlight_Hover;
+            }
+        }
+        else if (hovered){
+            highlight = UIHighlight_Hover;
+        }
+        
+        u64 lister_roundness_100 = def_get_config_u64(app, vars_save_string_lit("lister_roundness"));
+        f32 roundness = block_height*lister_roundness_100*0.01f;
+        draw_rectangle_fcolor(app, item_rect, roundness, get_item_margin_color(highlight));
+        draw_rectangle_fcolor(app, item_inner, roundness, get_item_margin_color(highlight, 1));
+        
+        Fancy_Line line = {};
+        push_fancy_string(scratch, &line, fcolor_id(defcolor_text_default), node->string);
+        push_fancy_stringf(scratch, &line, " ");
+        push_fancy_string(scratch, &line, fcolor_id(defcolor_pop2), node->status);
+        
+        Vec2_f32 p = item_inner.p0 + V2f32(3.f, (block_height - line_height)*0.5f);
+        draw_fancy_line(app, face_id, fcolor_zero(), &line, p);
+    }
+    
+    draw_set_clip(app, prev_clip);
+}
+
+
+
+function Lister_Result
+run_lister(Application_Links *app, Lister *lister, bool is_switch_buffer_lister) {
+    lister->filter_restore_point = begin_temp(lister->arena);
+    lister_update_filtered_list(app, lister);
+    
+    View_ID view = get_this_ctx_view(app, Access_Always);
+    View_Context ctx = view_current_context(app, view);
+    ctx.render_caller = lister_render;
+    ctx.hides_buffer = false;
+    View_Context_Block ctx_block(app, view, &ctx);
+
+    if (is_switch_buffer_lister) {
+        lister->handlers.navigate(app, view, lister, 0);
+    }    
+    
+    for (;;){
+        User_Input in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
+
+        
+        if (in.abort){
+            block_zero_struct(&lister->out);
+            lister->out.canceled = true;
+            break;
+        }
+
+
+        Lister_Activation_Code result = ListerActivation_Continue;
+        b32 handled = true;
+
+        // this is for notepad-style control-tabbing
+        if (is_switch_buffer_lister && in.event.kind == InputEventKind_KeyRelease) {
+            if (in.event.key.code == KeyCode_Control) {
+                void *user_data = 0;
+                if (0 <= lister->raw_item_index &&
+                    lister->raw_item_index < lister->options.count){
+                    user_data = lister_get_user_data(lister, lister->raw_item_index);
+                }
+                lister_activate(app, lister, user_data, false);
+                result = ListerActivation_Finished;
+            }
+        }
+
+        
+        
+        
+        switch (in.event.kind){
+            case InputEventKind_TextInsert:
+            {
+                if (lister->handlers.write_character != 0){
+                    result = lister->handlers.write_character(app);
+                }
+            }break;
+            
+            case InputEventKind_KeyStroke:
+            {
+                switch (in.event.key.code){
+                case KeyCode_Return:
+                {
+                    void *user_data = 0;
+                    if (0 <= lister->raw_item_index &&
+                        lister->raw_item_index < lister->options.count){
+                        user_data = lister_get_user_data(lister, lister->raw_item_index);
+                    }
+                    lister_activate(app, lister, user_data, false);
+                    result = ListerActivation_Finished;
+                }break;
+
+                case KeyCode_Tab: {
+                    i32 delta = (has_modifier(&in.event, KeyCode_Shift) ? -1 : 1);
+                    if(lister->handlers.navigate != 0) {
+                        lister->handlers.navigate(app, view, lister, delta);
+                    } else if(lister->handlers.key_stroke != 0){
+                        result = lister->handlers.key_stroke(app);
+                    } else { handled = false; }
+                } break;
+                    
+                case KeyCode_Backspace:
+                {
+                    if (lister->handlers.backspace != 0){
+                        lister->handlers.backspace(app);
+                    }
+                    else if (lister->handlers.key_stroke != 0){
+                        result = lister->handlers.key_stroke(app);
+                    }
+                    else{
+                        handled = false;
+                    }
+                }break;
+                    
+                case KeyCode_Up:
+                {
+                    if (lister->handlers.navigate != 0){
+                        lister->handlers.navigate(app, view, lister, -1);
+                    }
+                    else if (lister->handlers.key_stroke != 0){
+                        result = lister->handlers.key_stroke(app);
+                    }
+                    else{
+                        handled = false;
+                    }
+                }break;
+                    
+                case KeyCode_Down:
+                {
+                    if (lister->handlers.navigate != 0){
+                        lister->handlers.navigate(app, view, lister, 1);
+                    }
+                    else if (lister->handlers.key_stroke != 0){
+                        result = lister->handlers.key_stroke(app);
+                    }
+                    else{
+                        handled = false;
+                    }
+                }break;
+                    
+                case KeyCode_PageUp:
+                {
+                    if (lister->handlers.navigate != 0){
+                        lister->handlers.navigate(app, view, lister,
+                                                  -lister->visible_count);
+                    }
+                    else if (lister->handlers.key_stroke != 0){
+                        result = lister->handlers.key_stroke(app);
+                    }
+                    else{
+                        handled = false;
+                    }
+                }break;
+                    
+                case KeyCode_PageDown:
+                {
+                    if (lister->handlers.navigate != 0){
+                        lister->handlers.navigate(app, view, lister,
+                                                  lister->visible_count);
+                    }
+                    else if (lister->handlers.key_stroke != 0){
+                        result = lister->handlers.key_stroke(app);
+                    }
+                    else{
+                        handled = false;
+                    }
+                }break;
+                    
+                default:
+                {
+                    if (lister->handlers.key_stroke != 0){
+                        result = lister->handlers.key_stroke(app);
+                    }
+                    else{
+                        handled = false;
+                    }
+                }break;
+                }
+            }break;
+            
+            case InputEventKind_MouseButton:
+            {
+                switch (in.event.mouse.code){
+                    case MouseCode_Left:
+                    {
+                        Vec2_f32 p = V2f32(in.event.mouse.p);
+                        void *clicked = lister_user_data_at_p(app, view, lister, p);
+                        lister->hot_user_data = clicked;
+                    }break;
+                    
+                    default:
+                    {
+                        handled = false;
+                    }break;
+                }
+            }break;
+            
+            case InputEventKind_MouseButtonRelease:
+            {
+                switch (in.event.mouse.code){
+                    case MouseCode_Left:
+                    {
+                        if (lister->hot_user_data != 0){
+                            Vec2_f32 p = V2f32(in.event.mouse.p);
+                            void *clicked = lister_user_data_at_p(app, view, lister, p);
+                            if (lister->hot_user_data == clicked){
+                                lister_activate(app, lister, clicked, true);
+                                result = ListerActivation_Finished;
+                            }
+                        }
+                        lister->hot_user_data = 0;
+                    }break;
+                    
+                    default:
+                    {
+                        handled = false;
+                    }break;
+                }
+            }break;
+            
+            case InputEventKind_MouseWheel:
+            {
+                Mouse_State mouse = get_mouse_state(app);
+                lister->scroll.target.y += mouse.wheel;
+                lister_update_filtered_list(app, lister);
+            }break;
+            
+            case InputEventKind_MouseMove:
+            {
+                lister_update_filtered_list(app, lister);
+            }break;
+            
+            case InputEventKind_Core:
+            {
+                switch (in.event.core.code){
+                    case CoreCode_Animate:
+                    {
+                        lister_update_filtered_list(app, lister);
+                    }break;
+                    
+                    default:
+                    {
+                        handled = false;
+                    }break;
+                }
+            }break;
+            
+            default:
+            {
+                handled = false;
+            }break;
+        }
+        
+        if (result == ListerActivation_Finished){
+            break;
+        }
+        
+        if (!handled){
+            Mapping *mapping = lister->mapping;
+            Command_Map *map = lister->map;
+            
+            Fallback_Dispatch_Result disp_result =
+                fallback_command_dispatch(app, mapping, map, &in);
+            if (disp_result.code == FallbackDispatch_DelayedUICall){
+                call_after_ctx_shutdown(app, view, disp_result.func);
+                break;
+            }
+            if (disp_result.code == FallbackDispatch_Unhandled){
+                leave_current_input_unhandled(app);
+            }
+            else{
+                lister_call_refresh_handler(app, lister);
+            }
+        }
+    }
+
+    luis_custom_lister_is_being_drawn = false;
+    return(lister->out);
+}
+
+
 
 #if 0
 
@@ -2517,11 +3245,11 @@ luis_vim__fill_string_match_commands(Arena *arena, Lister *lister, String_Const_
 CUSTOM_UI_COMMAND_SIG(luis_vim_string_matches)
 CUSTOM_DOC("Enter Command Mode") {
     defer { minibar_string.size = 0; };
-	View_ID view = get_this_ctx_view(app, Access_Always);
-	if (view == 0){ return; }
+    View_ID view = get_this_ctx_view(app, Access_Always);
+    if (view == 0){ return; }
     
     
-	Scratch_Block scratch(app);
+    Scratch_Block scratch(app);
     String_Const_u8 selection_word = push_view_range_string(app, scratch);
     String_Const_u8 cursor_word = push_token_or_word_under_active_cursor(app, scratch);
     //print_message(app, SCu8("Selection and cursor match results are...\n"));
@@ -2530,16 +3258,17 @@ CUSTOM_DOC("Enter Command Mode") {
     //print_message(app, cursor_word);
     //print_message(app, SCu8("\n")); 
     
-	Lister_Block lister(app, scratch);
-	vim_lister_set_default_handlers(lister);
-	lister_set_query(lister, string_u8_litexpr("Command:"));
-	luis_vim__fill_string_match_commands(scratch, lister, selection_word, cursor_word);
+    Lister_Block lister(app, scratch);
+    lister_set_default_handlers(lister);
+    // vim_lister_set_default_handlers(lister);
+    lister_set_query(lister, string_u8_litexpr("Command:"));
+    luis_vim__fill_string_match_commands(scratch, lister, selection_word, cursor_word);
     
     //minibar_string.size = 0;
     //vim_reset_bottom_text();
     //string_append(&vim_bot_text, string_u8_litexpr(":"));
     lister.lister.current->vim_max_col_count = 2;
-	Lister_Result l_result = vim_run_lister(app, lister);
+    Lister_Result l_result = run_lister(app, lister, false);
     Custom_Command_Function *cmd = l_result.canceled ? 0 : (Custom_Command_Function *)l_result.user_data;
     if (cmd) {
         view_enqueue_command_function(app, view, cmd);
@@ -2771,10 +3500,15 @@ luis_isearch(Application_Links *app, Scan_Direction start_scan, i64 first_pos, S
     if (move_to_new_pos) {
         view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
         View_Buffer_Location *loc = view_get_prev_buffer_location(app, view);
-        if(loc)
-        {
+        if(loc) {
             loc->buffer = buffer;
             loc->cursor = first_pos;
+        }
+        
+        Managed_Scope scope = view_get_managed_scope(app, view);
+        i64 *prev_mark_pos = scope_attachment(app, scope, view_prev_mark_pos_before_snap_to_cursor, i64);
+        if (prev_mark_pos) {
+            *prev_mark_pos = first_pos;
         }
     }  else {
         view_set_cursor_and_preferred_x(app, view, seek_pos(first_pos));

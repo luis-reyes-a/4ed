@@ -177,23 +177,32 @@ lister_zero_scroll(Lister *lister){
     block_zero_struct(&lister->scroll);
 }
 
+
+
+
 function void
-lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
+__lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
     Scratch_Block scratch(app);
     
     Lister *lister = view_get_lister(app, view);
     if (lister == 0){
         return;
     }
-    
-    Rect_f32 region = draw_background_and_margin(app, view);
-    Rect_f32 prev_clip = draw_set_clip(app, region);
-    
+
     Face_ID face_id = get_face_id(app, 0);
     Face_Metrics metrics = get_face_metrics(app, face_id);
     f32 line_height = metrics.line_height;
     f32 block_height = lister_get_block_height(line_height);
     f32 text_field_height = lister_get_text_field_height(line_height);
+
+    
+
+    Rect_f32 region = draw_background_and_margin(app, view);
+    Rect_f32 prev_clip = draw_set_clip(app, region);
+    
+    
+    
+    
     
     // NOTE(allen): file bar
     // TODO(allen): What's going on with 'showing_file_bar'? I found it like this.
@@ -508,13 +517,13 @@ lister_user_data_at_p(Application_Links *app, View_ID view, Lister *lister, Vec2
 }
 
 function Lister_Result
-run_lister(Application_Links *app, Lister *lister){
+__run_lister(Application_Links *app, Lister *lister){
     lister->filter_restore_point = begin_temp(lister->arena);
     lister_update_filtered_list(app, lister);
     
     View_ID view = get_this_ctx_view(app, Access_Always);
     View_Context ctx = view_current_context(app, view);
-    ctx.render_caller = lister_render;
+    ctx.render_caller = __lister_render;
     ctx.hides_buffer = true;
     View_Context_Block ctx_block(app, view, &ctx);
     
@@ -846,14 +855,14 @@ lister_set_default_handlers(Lister *lister){
 ////////////////////////////////
 
 function Lister_Result
-run_lister_with_refresh_handler(Application_Links *app, Arena *arena, String_Const_u8 query, Lister_Handlers handlers){
+run_lister_with_refresh_handler(Application_Links *app, Arena *arena, String_Const_u8 query, Lister_Handlers handlers, bool is_switch_buffer_lister){
     Lister_Result result = {};
     if (handlers.refresh != 0){
         Lister_Block lister(app, arena);
         lister_set_query(lister, query);
         lister_set_handlers(lister, &handlers);
         handlers.refresh(app, lister);
-        result = run_lister(app, lister);
+        result = run_lister(app, lister, is_switch_buffer_lister);
     }
     else{
 #define M "ERROR: No refresh handler specified for lister (query_string = \"%.*s\")\n"
@@ -866,19 +875,19 @@ run_lister_with_refresh_handler(Application_Links *app, Arena *arena, String_Con
 }
 
 function Lister_Result
-run_lister_with_refresh_handler(Application_Links *app, String_Const_u8 query,  Lister_Handlers handlers){
+run_lister_with_refresh_handler(Application_Links *app, String_Const_u8 query,  Lister_Handlers handlers, bool is_switch_buffer_lister){
     Scratch_Block scratch(app);
-    return(run_lister_with_refresh_handler(app, scratch, query, handlers));
+    return(run_lister_with_refresh_handler(app, scratch, query, handlers, is_switch_buffer_lister));
 }
 
 function Lister_Result
-run_lister_with_refresh_handler(Application_Links *app, Arena *arena, char *query, Lister_Handlers handlers){
-    return(run_lister_with_refresh_handler(app, arena, SCu8(query), handlers));
+run_lister_with_refresh_handler(Application_Links *app, Arena *arena, char *query, Lister_Handlers handlers, bool is_switch_buffer_lister){
+    return(run_lister_with_refresh_handler(app, arena, SCu8(query), handlers, is_switch_buffer_lister));
 }
 
 function Lister_Result
-run_lister_with_refresh_handler(Application_Links *app, char *query, Lister_Handlers handlers){
-    return(run_lister_with_refresh_handler(app, SCu8(query), handlers));
+run_lister_with_refresh_handler(Application_Links *app, char *query, Lister_Handlers handlers, bool is_switch_buffer_lister){
+    return(run_lister_with_refresh_handler(app, SCu8(query), handlers, is_switch_buffer_lister));
 }
 
 ////////////////////////////////

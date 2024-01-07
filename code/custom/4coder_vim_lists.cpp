@@ -42,7 +42,8 @@ vim_get_command_from_user(Application_Links *app, i32 *command_ids, i32 command_
     //minibar_string.size = 0;
 	//vim_reset_bottom_text();
 	//string_append(&vim_bot_text, string_u8_litexpr(":"));
-	Lister_Result l_result = vim_run_lister(app, lister);
+        bool release_control_key_to_quit = false;
+	Lister_Result l_result = vim_run_lister(app, lister, release_control_key_to_quit);
 
 	return (l_result.canceled ? 0 : (Custom_Command_Function *)l_result.user_data);
 }
@@ -152,7 +153,8 @@ vim_get_choice_from_user(Application_Links *app, String_Const_u8 query, Lister_C
     handlers.key_stroke      = lister__key_stroke__choice_list;
     lister_set_handlers(lister, &handlers);
 
-    Lister_Result l_result = vim_run_lister(app, lister);
+    bool release_control_key_to_quit = false;
+    Lister_Result l_result = vim_run_lister(app, lister, release_control_key_to_quit);
     Lister_Choice *result = 0;
     if(!l_result.canceled){
         result = (Lister_Choice*)l_result.user_data;
@@ -567,7 +569,8 @@ CUSTOM_DOC("Opens an interactive list of all registered themes.")
 #if VIM_USE_BOTTOM_LISTER
 	string_append(&vim_bot_text, string_u8_litexpr("Theme:"));
 #endif
-	Lister_Result l_result = vim_run_lister(app, lister);
+        bool release_control_key_to_quit = false;
+	Lister_Result l_result = vim_run_lister(app, lister, release_control_key_to_quit);
 
 	Color_Table *result = 0;
 	if(!l_result.canceled){ result = (Color_Table*)l_result.user_data; }
@@ -668,13 +671,13 @@ CUSTOM_UI_COMMAND_SIG(vim_switch_lister)
 CUSTOM_DOC("Opens an interactive list of all loaded buffers.")
 {
     defer { minibar_string.size = 0; };
-	Lister_Handlers handlers = lister_get_default_handlers();
+    Lister_Handlers handlers = lister_get_default_handlers();
     handlers.write_character = vim_lister__write_character;
-	handlers.refresh = luis_generate_all_buffers_list_for_vim_switch_lister;
-	handlers.backspace = vim_lister__backspace;
+    handlers.refresh = luis_generate_all_buffers_list_for_vim_switch_lister;
+    handlers.backspace = vim_lister__backspace;
     //handlers.navigate = vim_lister__navigate__default;
     handlers.navigate = vim_navigate_and_peek_buffer_entry; //NOTE (luis) added this
-	Scratch_Block scratch(app);
+    Scratch_Block scratch(app);
     minibar_string.size = 0;
     
     View_ID init_view = get_active_view(app, Access_ReadVisible);
@@ -683,16 +686,17 @@ CUSTOM_DOC("Opens an interactive list of all loaded buffers.")
     i64 init_cursor = view_get_cursor_pos(app, init_view);
     Buffer_Scroll init_view_scroll = view_get_buffer_scroll (app, init_view);
     
-	//vim_reset_bottom_text();
-	//string_append(&vim_bot_text, string_u8_litexpr("Switch:"));
-    
-	Lister_Result l_result = vim_run_lister_with_refresh_handler(app, scratch, string_u8_litexpr("Switch:"), handlers, true);
-	if (!l_result.canceled){
-		Buffer_ID buffer = (Buffer_ID)(PtrAsInt(l_result.user_data));
+    //vim_reset_bottom_text();
+    //string_append(&vim_bot_text, string_u8_litexpr("Switch:"));
+
+    bool release_control_key_to_quit = true;
+    Lister_Result l_result = vim_run_lister_with_refresh_handler(app, scratch, string_u8_litexpr("Switch:"), handlers, release_control_key_to_quit);
+    if (!l_result.canceled){
+        Buffer_ID buffer = (Buffer_ID)(PtrAsInt(l_result.user_data));
         if (buffer) {
             View_ID view = get_this_ctx_view(app, Access_Always);
             view_set_buffer(app, view, buffer, 0);    
-        } else { //create it
+        } else if (l_result.text_field.size > 0) { //create it
             String_Const_u8 directory = get_directory_for_buffer(app, scratch, init_buffer);
             
             String_Const_u8 new_buffer_path = push_u8_stringf(scratch, "%.*s%.*s", string_expand(directory),  string_expand(l_result.text_field));
@@ -703,7 +707,7 @@ CUSTOM_DOC("Opens an interactive list of all loaded buffers.")
                 view_set_buffer(app, view, buffer, 0);
             }
         }
-	} else {
+    } else {
         //return to initial place
         view_set_buffer(app, init_view, init_buffer, 0);
         view_set_cursor_and_preferred_x(app, init_view, seek_pos(init_cursor));

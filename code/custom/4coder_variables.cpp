@@ -7,6 +7,8 @@
 ////////////////////////////////
 // NOTE(allen): String hashing
 
+
+
 global Arena vars_arena = {};
 global Table_Data_u64 vars_string_to_id = {};
 global Table_u64_Data vars_id_to_string = {};

@@ -22,6 +22,7 @@ CUSTOM_ID(attachment, view_code_peek_state);
 //CUSTOM_ID(attachment, view_tab_group);
 CUSTOM_ID(attachment, view_prev_render_caller);
 CUSTOM_ID(attachment, view_prev_buffer_location);
+CUSTOM_ID(attachment, view_prev_mark_pos_before_snap_to_cursor);
 //CUSTOM_ID(attachment, view_current_tab); not good idea, you'd have to store per view, per BUFFER_TAB_GROUP_COUNT
 
 
@@ -35,9 +36,15 @@ CUSTOM_ID(colors, luiscolor_tab_current);
 CUSTOM_ID(colors, luiscolor_tab_regular);
 CUSTOM_ID(colors, luiscolor_logical_not);
 
+global bool g_mark_is_active;
 global b32 IN_MODAL_MODE;
 global b32 SHOW_BRACE_LINE_ANNOTATIONS;
 global b32 HIGHLIGHT_PRINTF_SPECIFIER = true;
+
+bool *luis_get_mark_is_active() {
+    return &g_mark_is_active;
+} 
+
 //global b32 MAKE_NEW_BUFFER_TAB_GROUP_ON_VIEW_CREATION;
 global Face_ID SMALL_CODE_FACE;
 global Face_ID ITALICS_CODE_FACE;

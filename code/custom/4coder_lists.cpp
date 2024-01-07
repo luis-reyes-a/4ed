@@ -266,38 +266,56 @@ function void
 lister__backspace_text_field__file_path(Application_Links *app){
     View_ID view = get_this_ctx_view(app, Access_Always);
     Lister *lister = view_get_lister(app, view);
-    if (lister != 0){
-        if (lister->text_field.size > 0){
-            char last_char = lister->text_field.str[lister->text_field.size - 1];
-            lister->text_field.string = backspace_utf8(lister->text_field.string);
-            if (character_is_slash(last_char)){
-                User_Input input = get_current_input(app);
-                String_Const_u8 text_field = lister->text_field.string;
-                String_Const_u8 new_hot = string_remove_last_folder(text_field);
-                b32 is_modified = has_modifier(&input, KeyCode_Control);
-                b32 whole_word_when_mod = def_get_config_b32(vars_save_string_lit("lister_whole_word_backspace_when_modified"));
-                b32 whole_word_backspace = (is_modified == whole_word_when_mod);
-                if (whole_word_backspace){
-                    lister->text_field.size = new_hot.size;
-                }
-                set_hot_directory(app, new_hot);
-                // TODO(allen): We have to protect against lister_call_refresh_handler
-                // changing the text_field here. Clean this up.
-                String_u8 dingus = lister->text_field;
-                lister_call_refresh_handler(app, lister);
-                lister->text_field = dingus;
-            }
-            else{
-                String_Const_u8 text_field = lister->text_field.string;
-                String_Const_u8 new_key = string_front_of_path(text_field);
-                lister_set_key(lister, new_key);
-            }
-            
-            lister->item_index = 0;
-            lister_zero_scroll(lister);
-            lister_update_filtered_list(app, lister);
-        }
+    
+    if (!lister) return;
+    if (lister->text_field.size == 0) return;
+
+    
+    bool back_space_textfield_up_a_directory = false;
+    if (vars_save_string_lit("lister_whole_word_backspace_when_modified")) {
+        User_Input input = get_current_input(app);
+        if (has_modifier(&input, KeyCode_Control)) {
+            back_space_textfield_up_a_directory = true;
+        } 
+    } 
+
+    
+    char last_char = lister->text_field.str[lister->text_field.size - 1];
+    lister->text_field.string = backspace_utf8(lister->text_field.string);
+    bool go_up_a_directory = false;
+    if (character_is_slash(last_char)) {
+        go_up_a_directory = true;
     }
+
+    if (back_space_textfield_up_a_directory || go_up_a_directory) {
+        // User_Input input = get_current_input(app);
+        String_Const_u8 text_field = lister->text_field.string;
+        String_Const_u8 new_hot = string_remove_last_folder(text_field);
+
+        if (back_space_textfield_up_a_directory) {
+            lister->text_field.size = new_hot.size;    
+        }
+
+        if (go_up_a_directory) {
+            set_hot_directory(app, new_hot);    
+        } 
+        
+        
+        // TODO(allen): We have to protect against lister_call_refresh_handler
+        // changing the text_field here. Clean this up.
+        String_u8 dingus = lister->text_field;
+        lister_call_refresh_handler(app, lister);
+        lister->text_field = dingus;  
+    } else {
+        String_Const_u8 text_field = lister->text_field.string;
+        String_Const_u8 new_key = string_front_of_path(text_field);
+        lister_set_key(lister, new_key);    
+        
+    }
+            
+    lister->item_index = 0;
+    lister_zero_scroll(lister);
+    lister_update_filtered_list(app, lister);
 }
 
 function void

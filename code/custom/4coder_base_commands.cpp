@@ -102,6 +102,7 @@ write_text(Application_Links *app, String_Const_u8 insert){
     }
 }
 
+#if 0 // original version
 CUSTOM_COMMAND_SIG(write_text_input)
 CUSTOM_DOC("Inserts whatever text was used to trigger this command.")
 {
@@ -109,6 +110,25 @@ CUSTOM_DOC("Inserts whatever text was used to trigger this command.")
     String_Const_u8 insert = to_writable(&in);
     write_text(app, insert);
 }
+#else
+bool *luis_get_mark_is_active();
+  
+CUSTOM_COMMAND_SIG(write_text_input)
+CUSTOM_DOC("Inserts whatever text was used to trigger this command.") {
+    User_Input in = get_current_input(app);
+    String_Const_u8 insert = to_writable(&in);
+    bool *mark_is_active = luis_get_mark_is_active();
+    if (*mark_is_active) {
+        View_ID view = get_active_view(app, Access_ReadWriteVisible);
+        Buffer_ID buffer = view_get_buffer(app, view, Access_ReadWriteVisible);
+        Range_i64 range = get_view_range(app, view);
+        buffer_replace_range(app, buffer, range, insert);  
+        *mark_is_active = false;
+    } 
+    write_text(app, insert);    
+    
+}
+#endif
 
 CUSTOM_COMMAND_SIG(write_space)
 CUSTOM_DOC("Inserts a space.")

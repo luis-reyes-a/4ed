@@ -1,5 +1,4 @@
-     
-int main () {
+ int main () {
     Type func = main();
     Another_One::do_something();
 }
@@ -8,10 +7,10 @@ int main () {
 #include "mything.h"
 
 namespace Another_One {
-    template <int SIZE>
-    struct Type {
-        
-    };
+template <int SIZE>
+struct Type {
+    
+};
 }
 
 

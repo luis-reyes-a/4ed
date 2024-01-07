@@ -49,9 +49,9 @@ CUSTOM_DOC("Input consumption loop for default view behavior") {
     Scratch_Block scratch(app);
     default_input_handler_init(app, scratch);
     
-    View_ID view = get_this_ctx_view(app, Access_Always);
-    View_ID active_view = get_active_view(app, Access_Always);
-    Managed_Scope scope = view_get_managed_scope(app, view);
+    View_ID ctx_view = get_this_ctx_view(app, Access_Always);
+    View_ID prev_active_view = get_active_view(app, Access_Always);
+    Managed_Scope scope = view_get_managed_scope(app, ctx_view);
     //View_ID active_view = get_active_view(app, Access_Always);
     
     
@@ -102,11 +102,11 @@ CUSTOM_DOC("Input consumption loop for default view behavior") {
             Custom_Command_Function *cmd = map_result.command;
             if (cmd == open_panel_vsplit || cmd == open_panel_hsplit)
             {
-                if (luis_view_has_flags(app, view, VIEW_IS_PEEK_WINDOW))
+                if (luis_view_has_flags(app, ctx_view, VIEW_IS_PEEK_WINDOW))
                     actually_do_command = false;
                 else 
                 {
-                    View_ID peek = luis_get_peek_window(app, view);
+                    View_ID peek = luis_get_peek_window(app, ctx_view);
                     if (peek)
                     {
                         view_close(app, peek);
@@ -117,11 +117,12 @@ CUSTOM_DOC("Input consumption loop for default view behavior") {
         }
         
         ProfileCloseNow(view_input_profile);
+
+        Buffer_ID buffer_id_before_command     = view_get_buffer(app, ctx_view, Access_Always);
+        i64 cursor_pos_before_executed_command = view_get_cursor_pos(app, ctx_view);
         if (actually_do_command) {
             //b32 do_kill_tab_group = luis_view_has_flags(app, view, VIEW_KILL_TAB_GROUP_ON_VIEW_CLOSE);
             //i32 tab_group_index = view_get_tab_group_index(app, view);
-            Buffer_ID buffer_id_before_command = view_get_buffer(app, view, Access_Always);
-            i64 cursor_pos_before_executed_command = view_get_cursor_pos(app, view);
             
             map_result.command(app);
             g_last_executed_command = map_result.command;
@@ -138,8 +139,8 @@ CUSTOM_DOC("Input consumption loop for default view behavior") {
             
             //NOTE we do this here instead of view_change_buffer because there we don't know
             //what the previous cursor pos and I can't find a way to get a view's buffer's cursor pos
-            if (view_get_buffer(app, view, Access_Always) != buffer_id_before_command) {
-                View_Buffer_Location *loc = view_get_prev_buffer_location(app, view);
+            if (view_get_buffer(app, ctx_view, Access_Always) != buffer_id_before_command) {
+                View_Buffer_Location *loc = view_get_prev_buffer_location(app, ctx_view);
                 if (loc)
                 {
                     loc->buffer = buffer_id_before_command;
@@ -148,7 +149,7 @@ CUSTOM_DOC("Input consumption loop for default view behavior") {
             }
             
             View_ID new_active_view = get_active_view(app, Access_Always); 
-            if (active_view != new_active_view) //we changed active view here, update bindings as well
+            if (prev_active_view != new_active_view) //we changed active view here, update bindings as well
             {
                 update_buffer_bindings_for_modal_toggling(app, view_get_buffer(app, new_active_view, Access_Always));
             }
@@ -184,12 +185,37 @@ CUSTOM_DOC("Input consumption loop for default view behavior") {
             }
             
             View_ID current_active_view = get_active_view(app, Access_Always);
-            
-            if (fcoder_mode == FCoderMode_NotepadLike && (view == current_active_view)) {
-                b32 should_check_snap_mark_to_cursor = luis_view_has_flags(app, view, VIEW_NOTEPAD_MODE_MARK_SET);
+
+            if (fcoder_mode == FCoderMode_Original) { 
+                
+                View_ID new_active_view = get_active_view(app, Access_Always);
+                if ((new_active_view == prev_active_view) && (cursor_pos_before_executed_command != view_get_cursor_pos(app, ctx_view))) {
+                    // cursor pos changed and active view hasn't changed
+                    bool holding_down_shift_key = false;
+                    Input_Modifier_Set mods = system_get_keyboard_modifiers(scratch);
+                    if (has_modifier(&mods, KeyCode_Shift)) {
+                        holding_down_shift_key = true;
+                    }
+
+                    if (holding_down_shift_key) {
+                        if (!g_mark_is_active) {
+                            luis_set_mark(app, ctx_view, cursor_pos_before_executed_command);    
+                        }   
+                    } 
+                }
+
+                
+                
+                
+            } else if (fcoder_mode == FCoderMode_NotepadLike && (ctx_view == current_active_view)) {
+                b32 should_check_snap_mark_to_cursor = luis_view_has_flags(app, ctx_view, VIEW_NOTEPAD_MODE_MARK_SET);
+                bool holding_down_shift_key = false;
                 if (!should_check_snap_mark_to_cursor) {
                     Input_Modifier_Set mods = system_get_keyboard_modifiers(scratch);
-                    should_check_snap_mark_to_cursor = has_modifier(&mods, KeyCode_Shift);
+                    if (has_modifier(&mods, KeyCode_Shift)) {
+                        holding_down_shift_key = true;
+                        should_check_snap_mark_to_cursor = true;
+                    }
                 }
                 
                 b32 snap_mark_to_cursor = true;
@@ -205,21 +231,37 @@ CUSTOM_DOC("Input consumption loop for default view behavior") {
                         cmd == auto_indent_line_at_cursor || cmd == auto_indent_whole_file || cmd == auto_indent_range ||
                         cmd == delete_range || cmd == luis_multiline_comment_toggle || cmd == place_in_scope || //cmd == luis_surround_in_parens ||
                         cmd == view_buffer_other_panel || cmd == if_read_only_goto_position || cmd == if_read_only_goto_position_same_panel || cmd == luis_escape ||
-                        cmd == goto_line || cmd == goto_prev_jump || cmd == goto_next_jump || cmd == goto_first_jump) {
-                        luis_view_clear_flags(app, view, VIEW_NOTEPAD_MODE_MARK_SET);
+                        cmd == goto_line || cmd == goto_prev_jump || cmd == goto_next_jump || cmd == goto_first_jump || cmd == reopen) {
+                        luis_view_clear_flags(app, ctx_view, VIEW_NOTEPAD_MODE_MARK_SET);
                         snap_mark_to_cursor = true;
                     }   
                 } 
                 
                 if (snap_mark_to_cursor) {
-                    i64 pos = view_get_cursor_pos(app, view);
-                    view_set_mark(app, view, seek_pos(pos));
+                    i64 pos = view_get_cursor_pos(app, ctx_view);
+                    view_set_mark(app, ctx_view, seek_pos(pos));
+                } else if (holding_down_shift_key) {
+                    // NOTE I'm not entirely sure if this will work well...
+                    // basically when we hold down shift and begin selecting like in notepad
+                    // I want to record the mark pos. I set it to mark_pos
+                    if ((map_result.command != emacs_swap_cursor_mark) && 
+                        (map_result.command != cursor_mark_swap)) {
+                        // we check if last command wasn't luis_swap_cursor_and_mark because
+                        // that will move the mark to where cursor currently is...
+                        // other commands that do that will have this problem....
+                        i64 *prev_mark_pos = scope_attachment(app, scope, view_prev_mark_pos_before_snap_to_cursor, i64);
+                        if (prev_mark_pos) {
+                            *prev_mark_pos = view_get_mark_pos(app, ctx_view);
+                        }    
+                    }
+                    
                 }
             }
             
-            Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+            Buffer_ID buffer = view_get_buffer(app, ctx_view, Access_Always);
             Dirty_State dirty = buffer_get_dirty_state(app, buffer);
             if (HasFlag(dirty, DirtyState_UnloadedChanges)) {
+                bool snap_mark_to_cursor = false;
                 
                 if (HasFlag(dirty, DirtyState_UnsavedChanges)) {
                     // query user to maybe save changes
@@ -235,6 +277,9 @@ CUSTOM_DOC("Input consumption loop for default view behavior") {
                             if (result.str[0] == 'y' || result.str[0] == 'Y') {
                                 Buffer_Reopen_Flag flags = {};
                                 buffer_reopen(app, buffer, flags);
+                                
+                                luis_view_clear_flags(app, ctx_view, VIEW_NOTEPAD_MODE_MARK_SET);
+                                snap_mark_to_cursor = true;
                             } else if (result.str[0] == 'n' || result.str[0] == 'N') {
                                 // do nothing
                             } else {
@@ -249,7 +294,15 @@ CUSTOM_DOC("Input consumption loop for default view behavior") {
                 } else {
                     // just reload file no questions asked
                     Buffer_Reopen_Flag flags = {};
-                    buffer_reopen(app, buffer, flags);    
+                    buffer_reopen(app, buffer, flags);
+                    
+                    luis_view_clear_flags(app, ctx_view, VIEW_NOTEPAD_MODE_MARK_SET);
+                    snap_mark_to_cursor = true;
+                }
+                
+                if (snap_mark_to_cursor) {
+                    i64 pos = view_get_cursor_pos(app, ctx_view);
+                    view_set_mark(app, ctx_view, seek_pos(pos));
                 }
             }
         }
@@ -257,6 +310,7 @@ CUSTOM_DOC("Input consumption loop for default view behavior") {
 }
 
 
+#if 0
 function void
 vim_animate_filebar(Application_Links *app, Frame_Info frame_info){
 #if 1
@@ -271,6 +325,7 @@ vim_animate_filebar(Application_Links *app, Frame_Info frame_info){
 	vim_cur_filebar_offset = vim_nxt_filebar_offset;
 #endif
 }
+#endif
 
 function void
 luis_tick(Application_Links *app, Frame_Info frame_info){
@@ -280,7 +335,7 @@ luis_tick(Application_Links *app, Frame_Info frame_info){
 	}
 
     
-	vim_animate_filebar(app, frame_info);
+	// vim_animate_filebar(app, frame_info);
 	//vim_animate_cursor(app, frame_info);
 	//vim_cursor_blink++;
 	//fold_tick(app, frame_info);
@@ -862,8 +917,7 @@ luis_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id,
     }
     
     // NOTE(luis): draw cursor
-    if (fcoder_mode == FCoderMode_NotepadLike)
-    {
+    if (fcoder_mode == FCoderMode_NotepadLike) {
         b32 has_highlight_range = draw_highlight_range(app, view_id, buffer, text_layout_id, cursor_roundness);
         if (!has_highlight_range)
         {
@@ -900,10 +954,13 @@ luis_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id,
                     fcolor_id(defcolor_cursor, cursor_sub_id));
             }
         }
-    }
-    else if (fcoder_mode == FCoderMode_Original)
-    {
+    } else if (fcoder_mode == FCoderMode_Original) {
         draw_original_4coder_style_cursor_mark_highlight(app, view_id, is_active_view, buffer, text_layout_id, cursor_roundness, mark_thickness);
+        i64 mark_pos = view_get_mark_pos(app, view_id);
+        if (g_mark_is_active && (cursor_pos != mark_pos)) {
+            Range_i64 range = Ii64(cursor_pos, mark_pos);
+            luis_draw_character_block_outline(app, text_layout_id, range, metrics.normal_advance*50*0.01f, fcolor_id(defcolor_highlight));
+        } 
     }
     
     // NOTE(allen): Fade ranges
@@ -1044,26 +1101,19 @@ luis_render_caller(Application_Links *app, Frame_Info frame_info, View_ID view_i
     f32 line_height = face_metrics.line_height;
     f32 digit_advance = face_metrics.decimal_digit_advance;
     
-    #if 0
+    #if 0 // original way of laying out view and clip rect
     Rect_f32 region = draw_background_and_margin(app, view_id, is_active_view);
     Rect_f32 prev_clip = draw_set_clip(app, region);
-    #else
+    #else // this takes into account the custom lister rendering stuff
     
     Rect_f32 view_rect = view_get_screen_rect(app, view_id);
     Rect_f32 prev_clip = draw_set_clip(app, view_rect); //this is what BYP does
     Rect_f32 global_rect = global_get_screen_rectangle(app);
-    
-    //f32 filebar_y = global_rect.y1 - 1.f*line_height - vim_cur_filebar_offset;
-    //i'm not sure why we have to do this branch here and not BYP ...
-    if (vim_nxt_filebar_offset < vim_cur_filebar_offset) {
-        f32 filebar_y = global_rect.y1 - 1.f*line_height - vim_nxt_filebar_offset;
-        view_rect.y1 = Min(view_rect.y1, filebar_y);
-    }
-    else 
-    {
-        f32 filebar_y = global_rect.y1 - 1.f*line_height - vim_cur_filebar_offset;
-        view_rect.y1 = Min(view_rect.y1, filebar_y);
-    }
+
+
+    if (luis_custom_lister_is_being_drawn) {
+        view_rect.y1 = Min(view_rect.y1, luis_lister_rect_top_y);
+    } 
     
     f32 width = 3.0f;
     Rect_f32 region = rect_inner(view_rect, width);
@@ -1172,14 +1222,15 @@ luis_whole_screen_render_caller(Application_Links *app, Frame_Info frame_info) {
     Rect_f32 region = global_get_screen_rectangle(app);
     Face_ID face_id = get_face_id(app, 0);
     Face_Metrics face_metrics = get_face_metrics(app, face_id);
-    f32 line_height = face_metrics.line_height;
+    // f32 line_height = face_metrics.line_height;
     
     View_ID view = get_active_view(app, Access_Always);
-    Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
+    // Buffer_ID buffer = view_get_buffer(app, view, Access_Always);
 
     i64 cursor_pos  = view_get_cursor_pos(app, view);
     Buffer_Cursor cursor = view_compute_cursor(app, view, seek_pos(cursor_pos));
-    
+
+    #if 0 // this draws a file bar at the bottom
     {
         Scratch_Block scratch(app);
         //draw_file_bar(app, view, buffer, face_id, pair.min);
@@ -1247,6 +1298,10 @@ luis_whole_screen_render_caller(Application_Links *app, Frame_Info frame_info) {
         }
         //region = pair.max;
     }
+    #endif
+
+
+    
 #if 0
     Rect_f32 region = global_get_screen_rectangle(app);
     Vec2_f32 center = rect_center(region);
@@ -1444,11 +1499,14 @@ luis_buffer_region(Application_Links *app, View_ID view_id, Rect_f32 region){
         Rect_f32_Pair pair = layout_line_number_margin(app, buffer, region, digit_advance);
         region = pair.max;
     }
-    
+
+
+    #if 0
     if (1) { //NOTE this is the VIM style status bar on bottom of screen
         Rect_f32_Pair pair = layout_file_bar_on_bot(region, line_height);
         region = pair.min;
     }
+    #endif
     
     return(region);
 }

@@ -10,6 +10,10 @@ What I've done
 - [REMOVED] tabs per view [removed because I found this confusing to use and I didn't want to keep maintaining it]
 - emacs-style kill-line that has some bugs (calling it repeatidly from the command lister won't append the copies...)
 - passing in files to open from command line automatically sets first file to the default main view (usually *messages* is default). Also it will not create a file if it doesn't exist. I prefer this convention.
+- mark is a bit "smarter" now or at least it works better with notepad mode. Begin a selection with shift and this releasing will remember where the mark was set in the beginning so you can swap the
+  cursor to it's position. luis_swap_cursor_and_mark uses this to swap with the last known mark pos even if there is no current selection. This is helpful when you want to return to the other side of
+  the selection after doing some edit or wanting to reselect the previous selction. It works a little funky at the moment but it's good enough. Really what would be nice is to keep a small history of
+  all the selecions and make smarter decisions based off that...
 
 Known bugs:
 - when editing a file that was just externally modified by another program, a popup (query bar) appears that asks user if he wants to reload the file and lose changes made. Trying to escape doesn't escape and further attempts to edit file spawns more of the same popup to appear. This is because code that creates the popup is in input_event_handler(). It should be in some event that fires when 4coder gains focus but 4coder doesn't have an event or place for that...
@@ -18,6 +22,7 @@ Known bugs:
 TODO
 [x] make backspacing fsearch restart search from initial pos
 [x] have way to make buffers easily like emacs
+[] have a mark ring so I can jump back to a previous posision
 [] saving buffer created with vim_switch_buffer opens a "Save As" dialogue
 [x] jumping to new errors makes error in *compilation* visible from top of panel
 [] regex based incremental search

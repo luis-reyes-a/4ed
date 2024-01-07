@@ -2183,6 +2183,7 @@ no_mark_snap_to_cursor_if_shift(Application_Links *app, View_ID view_id){
     }
 }
 
+
 function b32
 view_has_highlighted_range(Application_Links *app, View_ID view){
     b32 result = false;

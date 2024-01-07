@@ -136,6 +136,16 @@ struct Lister_Choice_List{
     Lister_Choice *last;
 };
 
+// I define these in luis_commands now
+function void lister_render(Application_Links *app, Frame_Info frame_info, View_ID view);
+function Lister_Result run_lister(Application_Links *app, Lister *lister, bool is_switch_buffer_lister = false);
+
+
+function Lister_Result run_lister_with_refresh_handler(Application_Links *app, Arena *arena, String_Const_u8 query, Lister_Handlers handlers, bool is_switch_buffer_lister = false);
+function Lister_Result run_lister_with_refresh_handler(Application_Links *app, String_Const_u8 query,  Lister_Handlers handlers, bool is_switch_buffer_lister = false);
+function Lister_Result run_lister_with_refresh_handler(Application_Links *app, Arena *arena, char *query, Lister_Handlers handlers, bool is_switch_buffer_lister = false);
+function Lister_Result run_lister_with_refresh_handler(Application_Links *app, char *query, Lister_Handlers handlers, bool is_switch_buffer_lister  = false);
+
 #endif
 
 // BOTTOM

@@ -11,11 +11,8 @@
 
 // NOTE(allen): Users can declare their own managed IDs here.
 #include "luis_custom_layer.h"
-//#include "4coder_vim.h" //TODO remove this
-//#include "4coder_vim.cpp" //TODO remove this
-//#include "4coder_vim_helper.cpp" //TODO remove this
-#include "4coder_vim_lister.cpp"
-#include "4coder_vim_lists.cpp"
+// #include "4coder_vim_lister.cpp"
+// #include "4coder_vim_lists.cpp"
 
 static Custom_Command_Function *g_last_executed_command;
 

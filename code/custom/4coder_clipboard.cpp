@@ -161,6 +161,7 @@ CUSTOM_DOC("At the cursor, insert the text at the top of the clipboard.")
     }
 }
 
+
 CUSTOM_COMMAND_SIG(paste_next)
 CUSTOM_DOC("If the previous command was paste or paste_next, replaces the paste range with the next text down on the clipboard, otherwise operates as the paste command.")
 {
