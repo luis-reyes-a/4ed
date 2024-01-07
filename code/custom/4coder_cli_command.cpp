@@ -78,7 +78,7 @@ CUSTOM_DOC("Runs grep and puts contents into *grep* buffer") {
     Buffer_Identifier id = buffer_identifier(string_u8_litexpr("*grep*"));
     Scratch_Block scratch(app);
     String_Const_u8 hot = push_hot_directory(app, scratch);
-    exec_system_command(app, view, id, hot, bar_cmd.string, CLI_OverlapWithConflict|CLI_CursorAtEnd|CLI_SendEndSignal);
+    exec_system_command(app, view, id, hot, bar_cmd.string, CLI_OverlapWithConflict|CLI_SendEndSignal);
     lock_jump_buffer(app, SCu8(id.name, id.name_len));
 }
 

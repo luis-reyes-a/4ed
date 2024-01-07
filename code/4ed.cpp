@@ -543,6 +543,36 @@ App_Step_Sig(app_step) {
             begin_buffer_func(&app, models->keyboard_buffer->id);
         }
     }
+
+    #if 1 // NOTE(luis) added this to support dropping files
+    if (file_drop_name.size > 0) {
+
+        // if mouse is over panel that isn't active, make it active first
+        if (mouse_panel) { 
+            Panel *active_panel = layout_get_active_panel(layout);
+            if (active_panel != mouse_panel) {
+                // NOTE(allen): run deactivate command
+                co_send_core_event(tctx, models, active_panel->view, CoreCode_ClickDeactivateView);
+                        
+                layout->active_panel = mouse_panel;
+                models->animate_next_frame = true;
+                active_panel = mouse_panel;
+                        
+                // NOTE(allen): run activate command
+                co_send_core_event(tctx, models, active_panel->view, CoreCode_ClickActivateView);        
+            } 
+                
+        }
+
+        Panel *active_panel = layout_get_active_panel(layout);
+        Editing_File *file = create_file(tctx, models, file_drop_name, BufferCreate_NeverNew);
+        if (file && api_check_buffer(file)) {
+            view_set_file(tctx, models, active_panel->view, file);
+            view_quit_ui( tctx, models, active_panel->view);
+        } 
+            
+    }
+    #endif
     
     // NOTE(allen): consume event stream
     Input_Event_Node *input_node = input_list.first;

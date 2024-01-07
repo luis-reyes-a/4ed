@@ -1590,6 +1590,8 @@ win32_gl_create_window(HWND *wnd_out, HGLRC *context_out, DWORD style, RECT rect
         *wnd_out = 0;
         *context_out = 0;
         if (wnd != 0){
+            // NOTE(luis) added this to accept file drop
+            DragAcceptFiles(wnd, TRUE);
             log_os(" setting graphics pixel format...\n");
             
             HDC dc = GetDC(wnd);
@@ -2043,6 +2045,11 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         block_zero_struct(&win32vars.input_chunk.trans);
         win32vars.active_key_stroke = 0;
         win32vars.active_text_input = 0;
+
+        #if 1 //NOTE(luis) added to for file dropping
+        u64 dropped_file_name_length = 0;
+        u8 dropped_file_name[MAX_PATH];
+        #endif
         
         // TODO(allen): Find a good way to wait on a pipe
         // without interfering with the reading process.
@@ -2069,8 +2076,15 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                 if (get_more_messages){
                     if (msg.message == WM_QUIT){
                         keep_running = false;
-                    }
-                    else{
+                    } else if (msg.message == WM_DROPFILES) {
+                        HDROP handle = (HDROP)msg.wParam;
+                        
+                        UINT file_count = DragQueryFileA(handle, 0xffffffff, NULL, 0);
+                        if (file_count > 0) {
+                            dropped_file_name_length = DragQueryFileA(handle, 0, (char *)dropped_file_name, sizeof(dropped_file_name));
+                        } 
+                        
+                    } else{
                         b32 treat_normally = true;
                         if (msg.message == WM_KEYDOWN || msg.message == WM_SYSKEYDOWN){
                             switch (msg.wParam){
@@ -2175,6 +2189,11 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         input.mouse.p = input_chunk.pers.mouse;
         
         input.trying_to_kill = input_chunk.trans.trying_to_kill;
+
+        
+        
+
+        
         
         // TODO(allen): Not really appropriate to round trip this all the way to the OS layer, redo this system.
         // NOTE(allen): Ask the Core About Exiting if We Have an Exit Signal
@@ -2189,10 +2208,13 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         }
         
         win32vars.clip_post.size = 0;
+
+        // NOTE(luis) added this for file dropped
+        String_Const_u8 file_drop_name = SCu8(dropped_file_name, dropped_file_name_length);
         
         
         // NOTE(allen): Application Core Update
-        Application_Step_Result result = app.step(win32vars.tctx, &target, base_ptr, &input);
+        Application_Step_Result result = app.step(win32vars.tctx, &target, base_ptr, &input, file_drop_name);
         
         // NOTE(allen): Finish the Loop
         if (result.perform_kill){

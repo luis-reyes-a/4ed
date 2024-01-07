@@ -82,7 +82,7 @@ struct Application_Step_Input{
 name(Thread_Context *tctx,                 \
 Render_Target *target,                \
 void *base_ptr,                       \
-Application_Step_Input *input)
+Application_Step_Input *input, String_Const_u8 file_drop_name)
 
 typedef App_Step_Sig(App_Step);
 
