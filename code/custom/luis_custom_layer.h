@@ -41,6 +41,9 @@ global b32 IN_MODAL_MODE;
 global b32 SHOW_BRACE_LINE_ANNOTATIONS;
 global b32 HIGHLIGHT_PRINTF_SPECIFIER = true;
 
+// global s32 g_recently_opened_files_count;
+// global String_Const_u8 g_recently_opened_files[8];
+
 bool *luis_get_mark_is_active() {
     return &g_mark_is_active;
 } 

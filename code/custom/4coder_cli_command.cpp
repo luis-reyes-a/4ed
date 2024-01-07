@@ -9,6 +9,16 @@ CUSTOM_DOC("If the command execute_any_cli has already been used, this will exec
 {
     String_Const_u8 out_buffer = SCu8(out_buffer_space);
     String_Const_u8 cmd = SCu8(command_space);
+
+    #if 1 //NOTE(luis) added this
+    Scratch_Block scratch(app);
+    String_Const_u8 hot = push_hot_directory(app, scratch);
+    {
+        u64 size = clamp_top(hot.size, sizeof(hot_directory_space));
+        block_copy(hot_directory_space, hot.str, size);
+        hot_directory_space[hot.size] = 0;
+    }
+    #endif
     String_Const_u8 hot_directory = SCu8(hot_directory_space);
     
     if (out_buffer.size > 0 && cmd.size > 0 && hot_directory.size > 0){
@@ -21,7 +31,7 @@ CUSTOM_DOC("If the command execute_any_cli has already been used, this will exec
 
 CUSTOM_COMMAND_SIG(execute_any_cli)
 CUSTOM_DOC("Queries for an output buffer name and system command, runs the system command as a CLI and prints the output to the specified buffer."){
-    Scratch_Block scratch(app);
+    //Scratch_Block scratch(app);
     Query_Bar_Group group(app);
     
     Query_Bar bar_out = {};
@@ -39,15 +49,37 @@ CUSTOM_DOC("Queries for an output buffer name and system command, runs the syste
     if (!query_user_string(app, &bar_cmd)) return;
     bar_cmd.string.size = clamp_top(bar_cmd.string.size, sizeof(command_space) - 1);
     command_space[bar_cmd.string.size] = 0;
-    
+
+    #if 0 //NOTE(luis) moved this to top because I like running same command from different places
     String_Const_u8 hot = push_hot_directory(app, scratch);
     {
         u64 size = clamp_top(hot.size, sizeof(hot_directory_space));
         block_copy(hot_directory_space, hot.str, size);
         hot_directory_space[hot.size] = 0;
     }
+    #endif
     
     execute_previous_cli(app);
+}
+
+CUSTOM_COMMAND_SIG(grep)
+CUSTOM_DOC("Runs grep and puts contents into *grep* buffer") {
+    String_u8 init_cmd = Su8(command_space, (u64)0, sizeof(command_space));
+    string_append(&init_cmd, string_u8_litexpr("grep "));
+
+    Query_Bar_Group group(app);
+    Query_Bar bar_cmd = {};
+    bar_cmd.prompt = string_u8_litexpr("Run: ");
+    bar_cmd.string = init_cmd.string;
+    bar_cmd.string_capacity = init_cmd.cap;
+    if (!query_user_string(app, &bar_cmd)) return;
+
+    View_ID view = get_active_view(app, Access_Always);
+    Buffer_Identifier id = buffer_identifier(string_u8_litexpr("*grep*"));
+    Scratch_Block scratch(app);
+    String_Const_u8 hot = push_hot_directory(app, scratch);
+    exec_system_command(app, view, id, hot, bar_cmd.string, CLI_OverlapWithConflict|CLI_CursorAtEnd|CLI_SendEndSignal);
+    lock_jump_buffer(app, SCu8(id.name, id.name_len));
 }
 
 // BOTTOM

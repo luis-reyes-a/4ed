@@ -28,6 +28,40 @@ CUSTOM_DOC("Default command for responding to a startup event")
         if (auto_load){
             load_project(app);
         }
+
+        #if 0
+        Scratch_Block scratch(app);
+        FILE *file = def_search_normal_fopen(scratch, "recently_opened_files.txt", "rb");
+        if (file){
+            String_Const_u8 data = dump_file_handle(scratch, file);
+            fclose(file);
+
+            char *end_plus_one = data.str + data.size;
+            char *line_start = data.str;
+            g_recently_opened_files_count = 0;
+            for (char *at = data.str; at <= end_plus_one; at += 1) {
+                if ((at == end_plus_one) || (*at == '\n')) {
+                    String_Const_u8 filepath = SCu8(line_start, at);
+                    filepath = string_skip_chop_whitespace(filepath);
+                    File_Attributes attribs = system_quick_file_attributes(scratch, filepath);
+                    if (attribgs.size > 0) {
+                        String *str = &g_recently_opened_files[g_recently_opened_files_count];
+                        *str = push_string_copy(&global_permanent_arena, filepath);
+                        if (str->size == filepath.size) {
+                            g_recently_opened_files_count += 1;
+                            if (g_recently_opened_files_count == ArrayCount(g_recently_opened_files)) {
+                                break;
+                            } 
+                        } 
+                        
+                    } 
+                    line_start = at + 1;
+                } 
+            }
+
+            
+        }
+        #endif
     }
     
     {
