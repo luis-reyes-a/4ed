@@ -674,85 +674,6 @@ CUSTOM_DOC("if you have a scope selected, select just the contents of it") {
     }
 }
 
-CUSTOM_COMMAND_SIG(luis_view_peek_as_split_window)
-CUSTOM_DOC("view peek buffer in split window") {
-    View_ID view = get_active_view(app, Access_Always);
-    View_ID peek = 0;
-    if (luis_view_has_flags(app, view, VIEW_IS_PEEK_WINDOW)) {
-        peek = view;  
-        view = luis_get_other_child_view(app, peek);
-    } else {
-        View_ID bro_view = luis_get_other_child_view(app, view);
-        if(bro_view && luis_view_has_flags(app, bro_view, VIEW_IS_PEEK_WINDOW)) {
-            peek = bro_view;    
-        }
-    }
-    
-    if (view && peek) {
-        Assert (view != peek);
-        i64 peek_cursor_pos = view_get_cursor_pos(app, peek);
-        Buffer_Scroll peek_scroll = view_get_buffer_scroll(app, peek);
-        Buffer_ID peek_buffer = view_get_buffer(app, peek, Access_Always);
-        
-        
-        Panel_ID view_panel   = view_get_panel(app, view);
-        Panel_ID parent_panel = panel_get_parent(app, view_panel);
-        Panel_ID uncle_panel  = get_sibling_panel(app, parent_panel);
-        
-        View_ID target_view = 0;
-        if (uncle_panel) {
-            if (panel_is_leaf(app, uncle_panel)) {
-                target_view = panel_get_view(app, uncle_panel, Access_Always);    
-            } else {
-                Panel_ID panel_id = panel_get_child(app, uncle_panel, Side_Min);
-                target_view = panel_get_view(app, panel_id, Access_Always);
-            }
-        } else {
-            //target_view = open_view(app, view, ViewSplit_Right); //causes crash
-            if (panel_split(app, parent_panel, Dimension_X)) {
-                Panel_ID new_panel_id = panel_get_child(app, parent_panel, Side_Max);
-                target_view = panel_get_view(app, new_panel_id, Access_Always);
-            }
-            
-        }
-        
-        if (target_view) {
-            view_close(app, peek); //doing this before causes assert to fail in os_thread_wrapper() call when trying to execute a coroutine
-            
-            view_set_buffer(app, target_view, peek_buffer, 0);
-            view_set_active(app, target_view);
-            view_set_cursor_and_preferred_x(app, target_view, seek_pos(peek_cursor_pos));
-            view_set_buffer_scroll(app, target_view, peek_scroll, SetBufferScroll_NoCursorChange);    
-        }
-    }
-}
-
-CUSTOM_COMMAND_SIG(luis_view_peek_in_parent_window)
-CUSTOM_DOC("view peek buffer in split window") {
-    View_ID view = get_active_view(app, Access_Always);
-    View_ID peek = 0;
-    if (luis_view_has_flags(app, view, VIEW_IS_PEEK_WINDOW)) {
-        peek = view;  
-        view = luis_get_other_child_view(app, peek);
-    } else {
-        View_ID bro_view = luis_get_other_child_view(app, view);
-        if(bro_view && luis_view_has_flags(app, bro_view, VIEW_IS_PEEK_WINDOW)) {
-            peek = bro_view;    
-        }
-    }
-    
-    if (view && peek) {
-        i64 peek_cursor_pos = view_get_cursor_pos(app, peek);
-        Buffer_Scroll peek_scroll = view_get_buffer_scroll(app, peek);
-        Buffer_ID peek_buffer = view_get_buffer(app, peek, Access_Always);
-        view_close(app, peek); //doing this before causes assert to fail in os_thread_wrapper() call when trying to execute a coroutine
-        
-        view_set_buffer(app, view, peek_buffer, 0);
-        view_set_active(app, view);
-        view_set_cursor_and_preferred_x(app, view, seek_pos(peek_cursor_pos));
-        view_set_buffer_scroll(app, view, peek_scroll, SetBufferScroll_NoCursorChange);
-    }
-}
 
 
 
@@ -930,10 +851,28 @@ luis_find_build_view(Application_Links *app) {
     return build_view;
 }
 
+
+
 CUSTOM_COMMAND_SIG(luis_close_all_other_panels)
 CUSTOM_DOC("Close all panels except active one") {
     View_ID active_view = get_active_view(app, Access_Always);
-    for(View_ID v = get_view_next(app, 0, Access_Always); v; v = get_view_next(app, v, Access_Always)) {
+    if (luis_view_has_flags(app, active_view, VIEW_IS_PEEK_WINDOW)) {
+        View_ID bro_view = luis_get_other_child_view(app, active_view);
+        if (!bro_view) return;
+        
+        i64 peek_cursor_pos = view_get_cursor_pos(app, active_view);
+        Buffer_Scroll peek_scroll = view_get_buffer_scroll(app, active_view);
+        Buffer_ID peek_buffer = view_get_buffer(app, active_view, Access_Always);
+        view_close(app, active_view); //doing this before causes assert to fail in os_thread_wrapper() call when trying to execute a coroutine
+
+        active_view = bro_view;
+        view_set_buffer(app, active_view, peek_buffer, 0);
+        view_set_active(app, active_view);
+        view_set_cursor_and_preferred_x(app, active_view, seek_pos(peek_cursor_pos));
+        view_set_buffer_scroll(app, active_view, peek_scroll, SetBufferScroll_NoCursorChange);
+    } 
+    
+    for (View_ID v = get_view_next(app, 0, Access_Always); v; v = get_view_next(app, v, Access_Always)) {
         if (v != active_view) {
             view_close(app, v);    
         }
@@ -942,27 +881,109 @@ CUSTOM_DOC("Close all panels except active one") {
 
 CUSTOM_COMMAND_SIG(luis_close_current_panel)
 CUSTOM_DOC("Close current panel") {
+    #if 0 // original basic way
     View_ID active_view = get_active_view(app, Access_Always);
     view_close(app, active_view);
-}
-
-CUSTOM_COMMAND_SIG(luis_close_peek_or_active_panel)
-CUSTOM_DOC("Close panel. Peek first.") {
-    
+    #else // here we have to close peek first, otherwise weirdness starts to happen
     View_ID active_view = get_active_view(app, Access_Always);
     if (View_ID peek = luis_get_peek_window(app, active_view)) {
         view_close(app, peek);
-    }
-    else  {
-        for(View_ID v = get_view_next(app, 0, Access_Always); v; v = get_view_next(app, v, Access_Always)) {
-            if (luis_view_has_flags(app, v, VIEW_IS_PEEK_WINDOW)) {
-                view_close(app, v); 
-                return;
-            }
-        }
+    } else  {
+        // for(View_ID v = get_view_next(app, 0, Access_Always); v; v = get_view_next(app, v, Access_Always)) {
+        //     if (luis_view_has_flags(app, v, VIEW_IS_PEEK_WINDOW)) {
+        //         view_close(app, v); 
+        //         return;
+        //     }
+        // }
         view_close(app, active_view);
     }
+    #endif
 }
+
+
+CUSTOM_COMMAND_SIG(luis_view_peek_as_split_window)
+CUSTOM_DOC("view peek buffer in split window") {
+    View_ID view = get_active_view(app, Access_Always);
+    View_ID peek = 0;
+    if (luis_view_has_flags(app, view, VIEW_IS_PEEK_WINDOW)) {
+        peek = view;  
+        view = luis_get_other_child_view(app, peek);
+    } else {
+        View_ID bro_view = luis_get_other_child_view(app, view);
+        if(bro_view && luis_view_has_flags(app, bro_view, VIEW_IS_PEEK_WINDOW)) {
+            peek = bro_view;    
+        }
+    }
+    
+    if (view && peek) {
+        Assert (view != peek);
+        i64 peek_cursor_pos = view_get_cursor_pos(app, peek);
+        Buffer_Scroll peek_scroll = view_get_buffer_scroll(app, peek);
+        Buffer_ID peek_buffer = view_get_buffer(app, peek, Access_Always);
+        
+        
+        Panel_ID view_panel   = view_get_panel(app, view);
+        Panel_ID parent_panel = panel_get_parent(app, view_panel);
+        Panel_ID uncle_panel  = get_sibling_panel(app, parent_panel);
+        
+        View_ID target_view = 0;
+        if (uncle_panel) {
+            if (panel_is_leaf(app, uncle_panel)) {
+                target_view = panel_get_view(app, uncle_panel, Access_Always);    
+            } else {
+                Panel_ID panel_id = panel_get_child(app, uncle_panel, Side_Min);
+                target_view = panel_get_view(app, panel_id, Access_Always);
+            }
+        } else {
+            //target_view = open_view(app, view, ViewSplit_Right); //causes crash
+            if (panel_split(app, parent_panel, Dimension_X)) {
+                Panel_ID new_panel_id = panel_get_child(app, parent_panel, Side_Max);
+                target_view = panel_get_view(app, new_panel_id, Access_Always);
+            }
+            
+        }
+        
+        if (target_view) {
+            view_close(app, peek); //doing this before causes assert to fail in os_thread_wrapper() call when trying to execute a coroutine
+            
+            view_set_buffer(app, target_view, peek_buffer, 0);
+            view_set_active(app, target_view);
+            view_set_cursor_and_preferred_x(app, target_view, seek_pos(peek_cursor_pos));
+            view_set_buffer_scroll(app, target_view, peek_scroll, SetBufferScroll_NoCursorChange);    
+        }
+    }
+}
+
+CUSTOM_COMMAND_SIG(luis_view_peek_in_parent_window)
+CUSTOM_DOC("view peek buffer in split window") {
+    View_ID view = get_active_view(app, Access_Always);
+    View_ID peek = 0;
+    if (luis_view_has_flags(app, view, VIEW_IS_PEEK_WINDOW)) {
+        peek = view;  
+        view = luis_get_other_child_view(app, peek);
+    } else {
+        View_ID bro_view = luis_get_other_child_view(app, view);
+        if(bro_view && luis_view_has_flags(app, bro_view, VIEW_IS_PEEK_WINDOW)) {
+            peek = bro_view;    
+        }
+    }
+    
+    if (view && peek) {
+        i64 peek_cursor_pos = view_get_cursor_pos(app, peek);
+        Buffer_Scroll peek_scroll = view_get_buffer_scroll(app, peek);
+        Buffer_ID peek_buffer = view_get_buffer(app, peek, Access_Always);
+        view_close(app, peek); //doing this before causes assert to fail in os_thread_wrapper() call when trying to execute a coroutine
+        
+        view_set_buffer(app, view, peek_buffer, 0);
+        view_set_active(app, view);
+        view_set_cursor_and_preferred_x(app, view, seek_pos(peek_cursor_pos));
+        view_set_buffer_scroll(app, view, peek_scroll, SetBufferScroll_NoCursorChange);
+    }
+}
+
+
+
+
 
 function b32
 get_cpp_matching_file_dont_make(Application_Links *app, Buffer_ID buffer, Buffer_ID *buffer_out){

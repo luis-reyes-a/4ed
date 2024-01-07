@@ -102,13 +102,11 @@ CUSTOM_DOC("Input consumption loop for default view behavior") {
             Custom_Command_Function *cmd = map_result.command;
             if (cmd == open_panel_vsplit || cmd == open_panel_hsplit)
             {
-                if (luis_view_has_flags(app, ctx_view, VIEW_IS_PEEK_WINDOW))
+                if (luis_view_has_flags(app, ctx_view, VIEW_IS_PEEK_WINDOW)) {
                     actually_do_command = false;
-                else 
-                {
+                } else { //if it has a peek view, close it and split anyways
                     View_ID peek = luis_get_peek_window(app, ctx_view);
-                    if (peek)
-                    {
+                    if (peek) {
                         view_close(app, peek);
                         //try_to_recover_peek_view_after_command = true;   
                     }
