@@ -458,6 +458,19 @@ view_set_cursor_and_scroll(Thread_Context *tctx, Models *models, View *view, i64
 
 ////////////////////////////////
 
+
+internal File_Edit_Positions // like pop but it doesn't pop, I just need to know where new buffer pos and scroll will bee
+luis_file_edit_positions_get_last(Editing_File *file){
+    File_Edit_Positions edit_pos = {};
+    if (file->state.edit_pos_stack_top >= 0){
+        edit_pos = file->state.edit_pos_stack[file->state.edit_pos_stack_top];
+    }
+    else{
+        edit_pos = file->state.edit_pos_most_recent;
+    }
+    return(edit_pos);
+}
+
 internal void
 view_set_file(Thread_Context* tctx, Models* models, View* view, Editing_File* file, Set_Buffer_Flag flags = {}) {
     Assert(file != 0);
@@ -468,8 +481,9 @@ view_set_file(Thread_Context* tctx, Models* models, View* view, Editing_File* fi
         Application_Links app = {};
         app.tctx = tctx;
         app.cmd_context = models;
+        File_Edit_Positions new_edit_pos = luis_file_edit_positions_get_last(file);
         models->view_change_buffer(&app, view_get_id(&models->view_set, view),
-                                   (old_file != 0)?old_file->id:0, file->id);
+                                   (old_file != 0)?old_file->id:0, file->id, flags, new_edit_pos.scroll, new_edit_pos.cursor_pos);
     }
     
     #if 1

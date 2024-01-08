@@ -90,14 +90,12 @@ keys_global = {
 };
 
 keys_file = { 
-    //{ "move_up_to_blank_line_end",        "Up",    "Control" },
-    //{ "move_down_to_blank_line_end",      "Down",  "Control" },
-    //{ "move_left_alpha_numeric_boundary", "Left",  "Control" },
-    //{ "move_right_alpha_numeric_boundary","Right", "Control" },
     { "luis_left_word",  "Left",  "Control" },
     { "luis_right_word", "Right", "Control" },
-	{ "move_left_whitespace_boundary",  "Left",  "Alt" },
-    { "move_right_whitespace_boundary", "Right", "Alt" },
+	// { "move_left_whitespace_boundary",  "Left",  "Alt" },
+    // { "move_right_whitespace_boundary", "Right", "Alt" },
+    { "navigate_back",    "Left",  "Alt" },
+    { "navigate_forward", "Right", "Alt" },
 	
 	{ "luis_select_surrounding_scope",     "BackwardSlash", "Control"},
 	{ "luis_select_scope_contents",        "BackwardSlash", "Alt"},
@@ -118,7 +116,7 @@ keys_file = {
     { "backspace_alpha_numeric_boundary", "Backspace", "Control" },
     { "delete_alpha_numeric_boundary",    "Delete",    "Control" },
     { "snipe_backward_whitespace_or_token_boundary", "Backspace", "Alt" },
-    { "delete_line",                                 "Delete",    "Alt" },
+    { "snipe_forward_whitespace_or_token_boundary",  "Delete",    "Alt" },
     //{ "hungry_backspace",         "Insert" },
 	 
     { "luis_set_mark",               "Space", "Control" },

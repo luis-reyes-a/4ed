@@ -4,5 +4,5 @@ IF %ERRORLEVEL% NEQ 0 (
   call vc.bat
 )
 
-bin\build_optimized.bat
-rem bin\build.bat 
+rem bin\build_optimized.bat
+bin\build.bat 

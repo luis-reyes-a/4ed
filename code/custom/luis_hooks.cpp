@@ -220,30 +220,26 @@ CUSTOM_DOC("Input consumption loop for default view behavior") {
 
             if (fcoder_mode == FCoderMode_Original) { 
                 
+                // check to see if shift movement commands should set the mark
                 View_ID new_active_view = get_active_view(app, Access_Always);
-                if ((new_active_view == prev_active_view) && (cursor_pos_before_executed_command != view_get_cursor_pos(app, ctx_view))) {
+                if ((new_active_view == prev_active_view) && !g_mark_is_active && (cursor_pos_before_executed_command != view_get_cursor_pos(app, ctx_view))) {
                     
-                    Custom_Command_Function *cmd = map_result.command;
-                    if (cmd != write_text_input) {
-                        // cursor pos changed and active view hasn't changed
-                        bool holding_down_shift_key = false;
-                        Input_Modifier_Set mods = system_get_keyboard_modifiers(scratch);
-                        if (has_modifier(&mods, KeyCode_Shift)) {
-                            holding_down_shift_key = true;
-                        }
+                    Input_Modifier_Set mods = system_get_keyboard_modifiers(scratch);
+                    if (has_modifier(&mods, KeyCode_Shift)) {
                         
-                        if (holding_down_shift_key) {
-                            if (!g_mark_is_active) {
-                                luis_set_mark(app, ctx_view, cursor_pos_before_executed_command);    
-                            }   
+                        Custom_Command_Function *cmd = map_result.command;
+                        if (cmd == move_up || cmd == move_down || cmd == move_left || cmd == move_right ||
+                            cmd == seek_beginning_of_line || cmd == seek_end_of_line ||
+                            cmd == luis_left_word || cmd == luis_right_word ||
+                            cmd == move_left_whitespace_boundary || cmd == move_right_whitespace_boundary ||
+                            cmd == move_up_to_blank_line_end || cmd == move_down_to_blank_line_end ||
+                            cmd == luis_end || cmd == luis_home || cmd == page_up || cmd == page_down) {
+                            // cursor pos changed and active view hasn't changed
+                            
+                            luis_set_mark(app, ctx_view, cursor_pos_before_executed_command);
                         }
-                    }
-                     
+                    } 
                 }
-
-                
-                
-                
             } else if (fcoder_mode == FCoderMode_NotepadLike && (ctx_view == current_active_view)) {
                 b32 should_check_snap_mark_to_cursor = luis_view_has_flags(app, ctx_view, VIEW_NOTEPAD_MODE_MARK_SET);
                 bool holding_down_shift_key = false;
@@ -1389,6 +1385,115 @@ luis_whole_screen_render_caller(Application_Links *app, Frame_Info frame_info) {
 #endif
 }
 
+function void
+luis_view_change_buffer(Application_Links *app, View_ID view_id,
+                        Buffer_ID old_buffer_id, Buffer_ID new_buffer_id, Set_Buffer_Flag flags, Buffer_Scroll new_scroll, i64 new_cursor_pos){
+    Managed_Scope scope = view_get_managed_scope(app, view_id);
+    Buffer_ID *prev_buffer_id = scope_attachment(app, scope, view_previous_buffer, Buffer_ID);
+	if (prev_buffer_id != 0){
+		*prev_buffer_id = old_buffer_id;
+	}
+    
+    View_Jump_History *history = get_view_jump_history(app, view_id);
+    if (history) {
+        
+        b32 lister_peeking_bufer_dont_add_to_jump_history = (flags & SetBuffer_ListerPeekBufferDontAddToJumpHistory);
+        b32 navigating_back_dont_add_to_jump_history      = (flags & SetBuffer_NavigateBackDontAddToJumpHistory);
+        
+        
+        if (navigating_back_dont_add_to_jump_history) {
+            // NOTE when this is called from navigate_back/navigate_forward, history->at has been updated to point to current location with new_buffer_id
+            // and prev_at should point to last location in old buffer. All we do is update the old pos to have it's new scroll info
+            if (old_buffer_id) { // first time through, this will be null, then prev_at should always point to it's last jump location
+                Assert(history->entries[history->prev_at].buffer == old_buffer_id);
+                history->entries[history->prev_at].scroll = view_get_buffer_scroll(app, view_id);
+                history->entries[history->prev_at].pos    = view_get_cursor_pos(app, view_id);    
+            }    
+        } else if (!lister_peeking_bufer_dont_add_to_jump_history) {
+            // When called from elsewhere, history->at has not been updated because no jump entry has been created just yet
+            if (history->entry_count == 0) {
+                // first time initialization
+                *history = {};
+                history->entries[history->at].buffer = new_buffer_id;
+                history->entries[history->at].scroll = new_scroll;
+                history->entries[history->at].pos    = new_cursor_pos;
+                history->entry_count = 1;
+            } else {
+                Assert (history->at >= 0 && history->at < history->entry_count);
+                constexpr i32 N = ArrayCount(history->entries);
+                
+                history->prev_at = history->at;
+                if (history->at < (N-1)) { // means we have room to add to end
+                    history->at += 1;
+                    history->entry_count = history->at + 1; // this "clears" out rest of entries after it
+                } else { // we're full and need to shift everything down
+                    Assert (history->at == (N-1));
+                    Assert (history->entry_count == N);
+                    for (i32 i = 0; i < history->at; i += 1) {
+                        history->entries[i] = history->entries[i+1];
+                    }
+                    history->prev_at = history->at - 1;
+                } 
+                
+                if (old_buffer_id) {
+                    Assert(history->entries[history->prev_at].buffer == old_buffer_id);
+                    history->entries[history->prev_at].scroll = view_get_buffer_scroll(app, view_id);
+                    history->entries[history->prev_at].pos    = view_get_cursor_pos(app, view_id);
+                } 
+                
+                history->entries[history->at].buffer = new_buffer_id;
+                history->entries[history->at].scroll = new_scroll;
+                history->entries[history->at].pos    = new_cursor_pos;
+            }
+            
+        }
+        
+        
+        
+        #if 0 // this inserts new jump location like as a ring buffer entry, I don't think it makes much sense to user...
+        if (!(flags & SetBuffer_DontAddToJumpHistory)) {
+            Assert (history->at >= 0 && history->at < history->entry_count);
+            constexpr i32 N = ArrayCount(history->entries);
+            
+            
+            
+            
+            i32 index_after_at = history->at + 1;
+            if (index_after_at >= history->entry_count) index_after_at = 0;
+            
+            i32 index_array_count = 0;
+            i32 index_array[N-1] = {};
+            
+            
+            for (i32 i = index_after_at; i < history->entry_count; i += 1) {
+                index_array[index_array_count++] = i;
+            }  
+            
+            if (history->entry_count < N) {
+                index_array[index_array_count++] = history->entry_count;
+                history->entry_count += 1;
+            } else { 
+                for (i32 i = 0; i < history->at; i += 1) {
+                    index_array[index_array_count++] = i;
+                } 
+            }
+            
+            Assert (index_array_count < N); //otherwise we have buffer overflow
+            
+            for (i32 next_index = index_array_count-1; next_index > 0; next_index -= 1) {
+                i32 prev_index = next_index - 1;
+                history->entries[next_index] = history->entries[prev_index];
+            }
+            
+            history->entries[index_after_at].buffer = new_buffer_id;
+            history->entries[index_after_at].scroll = new_scroll;
+            history->entries[index_after_at].pos    = new_cursor_pos;
+        }
+        #endif
+    } 
+    
+}
+
 BUFFER_HOOK_SIG(luis_begin_buffer){
     ProfileScope(app, "begin buffer");
     
@@ -1462,8 +1567,7 @@ BUFFER_HOOK_SIG(luis_begin_buffer){
             buffer_set_layout(app, buffer_id, layout_generic);
         }
     }
-    
-    // no meaning for return
+     
     
     //NOTE(luis) added this
     if (string_match(buffer_name, string_u8_litexpr("project.4coder"))) {

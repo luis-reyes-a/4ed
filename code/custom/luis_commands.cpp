@@ -888,7 +888,53 @@ luis_find_build_view(Application_Links *app) {
     return build_view;
 }
 
+static void view_jump_to_entry(Application_Links *app, View_ID view, View_Jump_History_Entry *entry) {
+    view_set_buffer(app, view, entry->buffer, SetBuffer_KeepOriginalGUI|SetBuffer_DontTouchOldFile|SetBuffer_NavigateBackDontAddToJumpHistory);
+    view_set_cursor_and_preferred_x(app, view, seek_pos(entry->pos));
+    view_set_buffer_scroll(app, view, entry->scroll, SetBufferScroll_SnapCursorIntoView);
+} 
 
+CUSTOM_COMMAND_SIG(navigate_back)
+CUSTOM_DOC("Jump back to previous view location") {
+    View_ID view = get_active_view(app, Access_Always);
+    View_Jump_History *history = get_view_jump_history(app, view);
+    if (!history) return;
+    if (history->entry_count <= 0) return;
+    if (history->at <= 0) return; // nothing to go back to
+    
+    #if 1
+    history->prev_at = history->at--;
+    #else // weird ring buffer way
+    history->prev_at = history->at;
+    history->at -= 1;
+    if (history->at < 0) history->at = history->entry_count-1;
+    #endif
+    
+    
+    View_Jump_History_Entry *entry = history->entries + history->at;
+    view_jump_to_entry(app, view, entry);
+}
+
+CUSTOM_COMMAND_SIG(navigate_forward)
+CUSTOM_DOC("Jump back to next view location") {
+    View_ID view = get_active_view(app, Access_Always);
+    View_Jump_History *history = get_view_jump_history(app, view);
+    if (!history) return;
+    if (history->entry_count <= 0) return;
+    if (history->at >= (history->entry_count-1)) return; // nothing to go forward to
+    
+    #if 1
+    history->prev_at = history->at++;
+    #else // weird ring buffer way
+    history->prev_at = history->at;
+    history->at += 1;
+    if (history->at >= history->entry_count) history->at = 0;
+    #endif
+    
+    
+    View_Jump_History_Entry *entry = history->entries + history->at;
+    view_jump_to_entry(app, view, entry);
+}
 
 CUSTOM_COMMAND_SIG(luis_close_all_other_panels)
 CUSTOM_DOC("Close all panels except active one") {
@@ -1387,7 +1433,7 @@ vim_navigate_and_peek_code_index_entry(Application_Links *app, View_ID view, Lis
     
     if (lister->raw_item_index >= 0 && lister->raw_item_index < lister->options.count) {
         Code_Index_Note *note = (Code_Index_Note *)lister_get_user_data(lister, lister->raw_item_index);
-        Set_Buffer_Flag flags = SetBuffer_KeepOriginalGUI;
+        Set_Buffer_Flag flags = SetBuffer_KeepOriginalGUI|SetBuffer_DontTouchOldFile;
         view_set_buffer(app, view, note->file->buffer, flags);
         
         Buffer_Seek seek = seek_pos(note->pos.first);
@@ -2195,7 +2241,7 @@ luis_lister_navigate_and_peek_buffer_entry(Application_Links *app, View_ID view,
     if (lister->raw_item_index >= 0 &&
         lister->raw_item_index <  lister->options.count) {
         Buffer_ID buffer = (Buffer_ID)PtrAsInt(lister_get_user_data(lister, lister->raw_item_index));
-        Set_Buffer_Flag flags = SetBuffer_KeepOriginalGUI|SetBuffer_DontTouchOldFile;
+        Set_Buffer_Flag flags = SetBuffer_KeepOriginalGUI|SetBuffer_DontTouchOldFile|SetBuffer_ListerPeekBufferDontAddToJumpHistory;
         view_set_buffer(app, view, buffer, flags);
         
         //better to just keep the cursor where we had left it off previously for familiarity
@@ -2471,7 +2517,7 @@ run_lister(Application_Links *app, Lister *lister, bool is_switch_buffer_lister)
                 Buffer_ID new_buffer_id = view_get_buffer(app, view, Access_Always);
                 if (new_buffer_id != init_buffer_id) {
                     // NOTE we have to do this in order to actually touch the file, since 4coder won't call view_set_file() if they're the same (there's no touch_file/view)
-                    view_set_buffer(app, view, init_buffer_id, SetBuffer_KeepOriginalGUI|SetBuffer_DontTouchOldFile);
+                    view_set_buffer(app, view, init_buffer_id, SetBuffer_KeepOriginalGUI|SetBuffer_DontTouchOldFile|SetBuffer_ListerPeekBufferDontAddToJumpHistory);
                     view_set_buffer(app, view, new_buffer_id,  SetBuffer_KeepOriginalGUI);
                 } 
             }

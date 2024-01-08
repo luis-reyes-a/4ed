@@ -57,6 +57,7 @@ buffer_lex_task = managed_id_declare(app, string_u8_litexpr("attachment"), strin
 buffer_wrap_lines = managed_id_declare(app, string_u8_litexpr("attachment"), string_u8_litexpr("buffer_wrap_lines"));
 sticky_jump_marker_handle = managed_id_declare(app, string_u8_litexpr("attachment"), string_u8_litexpr("sticky_jump_marker_handle"));
 attachment_tokens = managed_id_declare(app, string_u8_litexpr("attachment"), string_u8_litexpr("attachment_tokens"));
+view_jump_history = managed_id_declare(app, string_u8_litexpr("attachment"), string_u8_litexpr("view_jump_history"));
 view_custom_flags = managed_id_declare(app, string_u8_litexpr("attachment"), string_u8_litexpr("view_custom_flags"));
 view_code_peek_state = managed_id_declare(app, string_u8_litexpr("attachment"), string_u8_litexpr("view_code_peek_state"));
 view_prev_render_caller = managed_id_declare(app, string_u8_litexpr("attachment"), string_u8_litexpr("view_prev_render_caller"));

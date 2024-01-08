@@ -1068,7 +1068,7 @@ BUFFER_HOOK_SIG(default_end_buffer){
 
 function void
 default_view_change_buffer(Application_Links *app, View_ID view_id,
-                           Buffer_ID old_buffer_id, Buffer_ID new_buffer_id){
+                           Buffer_ID old_buffer_id, Buffer_ID new_buffer_id, Set_Buffer_Flag flags, Buffer_Scroll new_scroll, i64 new_cursor_pos){
     Managed_Scope scope = view_get_managed_scope(app, view_id);
     Buffer_ID *prev_buffer_id = scope_attachment(app, scope, view_previous_buffer, Buffer_ID);
 	if (prev_buffer_id != 0){

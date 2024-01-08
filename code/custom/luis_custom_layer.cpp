@@ -194,6 +194,8 @@ custom_layer_init(Application_Links *app) {
     set_custom_hook(app, HookID_RenderCaller, luis_render_caller);
     set_custom_hook(app, HookID_WholeScreenRenderCaller, luis_whole_screen_render_caller);
     
+    set_custom_hook(app, HookID_ViewChangeBuffer, luis_view_change_buffer);
+    
     set_custom_hook(app, HookID_BeginBuffer, luis_begin_buffer);
     set_custom_hook(app, HookID_NewFile, luis_new_file);
     set_custom_hook(app, HookID_BufferRegion, luis_buffer_region);

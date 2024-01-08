@@ -281,8 +281,10 @@ enum{
 api(custom)
 typedef u32 Set_Buffer_Flag;
 enum{
-    SetBuffer_KeepOriginalGUI  = 0x1,
-    SetBuffer_DontTouchOldFile = 0x2 // NOTE(luis) added this
+    SetBuffer_KeepOriginalGUI                      = 0x1,
+    SetBuffer_DontTouchOldFile                     = 0x2,  // NOTE(luis) added this
+    SetBuffer_NavigateBackDontAddToJumpHistory     = 0x4,  // NOTE(luis) added this
+    SetBuffer_ListerPeekBufferDontAddToJumpHistory = 0x8,  // NOTE(luis) added this
 };
 
 api(custom)
@@ -711,7 +713,7 @@ typedef void Whole_Screen_Render_Caller_Function(Application_Links *app, Frame_I
 
 api(custom)
 typedef void View_Change_Buffer_Function(Application_Links *app, View_ID view_id,
-                                         Buffer_ID old_buffer_id, Buffer_ID new_buffer_id);
+                                         Buffer_ID old_buffer_id, Buffer_ID new_buffer_id, Set_Buffer_Flag flags, Buffer_Scroll new_scroll, i64 new_cursor_pos);
 
 api(custom)
 typedef u32 Layout_Item_Flag;

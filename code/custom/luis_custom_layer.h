@@ -15,7 +15,24 @@
 #define CLAMP_LO(var, min) (((var) < (min)) ? ((var) = (min)) : (var))
 #define CLAMP(var, min, max) (assert(max > min), CLAMP_LO(var, min), CLAMP_HI(var, max))
 
+struct View_Jump_History_Entry {
+    Buffer_ID buffer;
+    Buffer_Scroll scroll;
+    i64 pos;
+};
+ 
+struct View_Jump_History {
+    View_Jump_History_Entry entries[8]; 
+    i32 entry_count;
+    i32 prev_at;
+    i32 at;
+}; 
 
+
+
+
+
+CUSTOM_ID(attachment, view_jump_history);
 CUSTOM_ID(attachment, view_custom_flags);
 CUSTOM_ID(attachment, view_code_peek_state);
 //CUSTOM_ID(attachment, view_tab_group_index);
@@ -116,6 +133,11 @@ luis_view_clear_flags(Application_Links *app, View_ID view, u32 flags)
    u32 *view_flags = scope_attachment(app, scope, view_custom_flags, u32);
    if(view_flags)
       *view_flags &= ~flags;
+}
+
+static View_Jump_History *get_view_jump_history(Application_Links *app, View_ID view) {
+    Managed_Scope scope = view_get_managed_scope(app, view);
+    return scope_attachment(app, scope, view_jump_history, View_Jump_History);
 }
 
 #if 0
@@ -590,6 +612,8 @@ logprintf(Application_Links *app, char *fmt, ...)
    print_message(app, mkstr(&builder));
 }
 
+
+
 //returns newly made tab group_index
 #if 0
 internal i32
@@ -763,6 +787,7 @@ update_buffer_bindings_for_modal_toggling(Application_Links *app, Buffer_ID buff
 	Command_Map_ID *map_id_ptr = scope_attachment(app, scope, buffer_map_id, Command_Map_ID); 
 	*map_id_ptr = map_id;
 }
+
 
 
 
