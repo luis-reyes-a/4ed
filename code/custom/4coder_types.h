@@ -285,6 +285,7 @@ enum{
     SetBuffer_DontTouchOldFile                     = 0x2,  // NOTE(luis) added this
     SetBuffer_NavigateBackDontAddToJumpHistory     = 0x4,  // NOTE(luis) added this
     SetBuffer_ListerPeekBufferDontAddToJumpHistory = 0x8,  // NOTE(luis) added this
+    SetBuffer_BufferReopenedSameFile               = 0x16,
 };
 
 api(custom)

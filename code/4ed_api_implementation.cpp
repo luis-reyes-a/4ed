@@ -992,7 +992,7 @@ buffer_reopen(Application_Links *app, Buffer_ID buffer_id, Buffer_Reopen_Flag fl
                         file_create_from_string(tctx, models, file, SCu8(file_memory, attributes.size), attributes);
                         
                         for (i32 i = 0; i < vptr_count; ++i){
-                            view_set_file(tctx, models, vptrs[i], file);
+                            view_set_file(tctx, models, vptrs[i], file, SetBuffer_BufferReopenedSameFile);
                             
                             vptrs[i]->file = file;
                             i64 line = line_numbers[i];

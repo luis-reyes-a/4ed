@@ -1399,9 +1399,14 @@ luis_view_change_buffer(Application_Links *app, View_ID view_id,
         
         b32 lister_peeking_bufer_dont_add_to_jump_history = (flags & SetBuffer_ListerPeekBufferDontAddToJumpHistory);
         b32 navigating_back_dont_add_to_jump_history      = (flags & SetBuffer_NavigateBackDontAddToJumpHistory);
-        
-        
-        if (navigating_back_dont_add_to_jump_history) {
+        b32 buffer_reopened_same_file                     = (flags & SetBuffer_BufferReopenedSameFile);
+        if (buffer_reopened_same_file) {
+            // calling reopen will change the buffer id because 4coder doesn't reuse id's
+            // in this case we just update current location to point to where we are now
+            history->entries[history->at].buffer = new_buffer_id;
+            history->entries[history->at].scroll = new_scroll;
+            history->entries[history->at].pos = new_cursor_pos;
+        } else if (navigating_back_dont_add_to_jump_history) {
             // NOTE when this is called from navigate_back/navigate_forward, history->at has been updated to point to current location with new_buffer_id
             // and prev_at should point to last location in old buffer. All we do is update the old pos to have it's new scroll info
             if (old_buffer_id) { // first time through, this will be null, then prev_at should always point to it's last jump location
