@@ -864,9 +864,21 @@ draw_original_4coder_style_cursor_mark_highlight(Application_Links *app, View_ID
                                  fcolor_id(defcolor_cursor, cursor_sub_id));
             paint_text_color_pos(app, text_layout_id, cursor_pos,
                                  fcolor_id(defcolor_at_cursor));
+            
             draw_character_wire_frame(app, text_layout_id, mark_pos,
                                       roundness, outline_thickness,
                                       fcolor_id(defcolor_mark));
+            
+            // Rect_f32 rect = text_layout_character_on_screen(app, text_layout_id, mark_pos);
+            // rect.y0 = rect.y1 - 2.0f; //
+            //rect.y1 = rect.y0 + 2.0f;
+            // if (mark_pos < cursor_pos) {
+                // rect.x1 = rect.x0 + 2.0f;
+            // } else {
+                // rect.x0 = rect.x1 - 2.0f;
+            // }  
+            
+            // draw_rectangle(app, rect, 1.0f, fcolor_resolve(fcolor_id(defcolor_mark)));
         }
         else{
             draw_character_wire_frame(app, text_layout_id, mark_pos,

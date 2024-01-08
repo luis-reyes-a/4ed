@@ -222,18 +222,23 @@ CUSTOM_DOC("Input consumption loop for default view behavior") {
                 
                 View_ID new_active_view = get_active_view(app, Access_Always);
                 if ((new_active_view == prev_active_view) && (cursor_pos_before_executed_command != view_get_cursor_pos(app, ctx_view))) {
-                    // cursor pos changed and active view hasn't changed
-                    bool holding_down_shift_key = false;
-                    Input_Modifier_Set mods = system_get_keyboard_modifiers(scratch);
-                    if (has_modifier(&mods, KeyCode_Shift)) {
-                        holding_down_shift_key = true;
+                    
+                    Custom_Command_Function *cmd = map_result.command;
+                    if (cmd != write_text_input) {
+                        // cursor pos changed and active view hasn't changed
+                        bool holding_down_shift_key = false;
+                        Input_Modifier_Set mods = system_get_keyboard_modifiers(scratch);
+                        if (has_modifier(&mods, KeyCode_Shift)) {
+                            holding_down_shift_key = true;
+                        }
+                        
+                        if (holding_down_shift_key) {
+                            if (!g_mark_is_active) {
+                                luis_set_mark(app, ctx_view, cursor_pos_before_executed_command);    
+                            }   
+                        }
                     }
-
-                    if (holding_down_shift_key) {
-                        if (!g_mark_is_active) {
-                            luis_set_mark(app, ctx_view, cursor_pos_before_executed_command);    
-                        }   
-                    } 
+                     
                 }
 
                 
@@ -709,6 +714,32 @@ draw_paren_range_and_its_sub_ranges(Application_Links *app, Buffer_ID buffer, Te
 }
 
 function void
+luis_draw_original_mode_cursor_and_mark(Application_Links *app, View_ID view_id, b32 is_active_view,
+                                                 Buffer_ID buffer, Text_Layout_ID text_layout_id,
+                                                 f32 roundness, f32 outline_thickness){
+    b32 has_highlight_range = draw_highlight_range(app, view_id, buffer, text_layout_id, roundness);
+    if (!has_highlight_range){
+        i32 cursor_sub_id = default_cursor_sub_id();
+        
+        i64 cursor_pos = view_get_cursor_pos(app, view_id);
+        i64 mark_pos = view_get_mark_pos(app, view_id);
+        if (is_active_view){
+            draw_character_block(app, text_layout_id, cursor_pos, roundness,
+                                 fcolor_id(defcolor_cursor, cursor_sub_id));
+            paint_text_color_pos(app, text_layout_id, cursor_pos,
+                                 fcolor_id(defcolor_at_cursor));
+        } else {
+            // draw_character_wire_frame(app, text_layout_id, cursor_pos,
+                                      // roundness, outline_thickness,
+                                      // fcolor_id(defcolor_cursor, cursor_sub_id));
+            draw_character_wire_frame(app, text_layout_id, mark_pos,
+                                      roundness, outline_thickness,
+                                      fcolor_id(defcolor_mark));
+        }
+    }
+}
+
+function void
 luis_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id,
     Buffer_ID buffer, Text_Layout_ID text_layout_id,
     Rect_f32 rect) {
@@ -987,9 +1018,9 @@ luis_render_buffer(Application_Links *app, View_ID view_id, Face_ID face_id,
             }
         }
     } else if (fcoder_mode == FCoderMode_Original) {
-        draw_original_4coder_style_cursor_mark_highlight(app, view_id, is_active_view, buffer, text_layout_id, cursor_roundness, mark_thickness);
+        luis_draw_original_mode_cursor_and_mark(app, view_id, is_active_view, buffer, text_layout_id, cursor_roundness, mark_thickness);
         i64 mark_pos = view_get_mark_pos(app, view_id);
-        if (g_mark_is_active && (cursor_pos != mark_pos)) {
+        if (g_mark_is_active && is_active_view && (cursor_pos != mark_pos)) {
             Range_i64 range = Ii64(cursor_pos, mark_pos);
             luis_draw_character_block_outline(app, text_layout_id, range, metrics.normal_advance*50*0.01f, fcolor_id(defcolor_highlight));
         } 

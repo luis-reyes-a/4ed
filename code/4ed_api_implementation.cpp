@@ -1678,7 +1678,7 @@ view_set_buffer(Application_Links *app, View_ID view_id, Buffer_ID buffer_id, Se
         Editing_File *file = working_set_get_file(&models->working_set, buffer_id);
         if (api_check_buffer(file)){
             if (file != view->file){
-                view_set_file(app->tctx, models, view, file);
+                view_set_file(app->tctx, models, view, file, flags);
                 if (!(flags & SetBuffer_KeepOriginalGUI)){
                     view_quit_ui(app->tctx, models, view);
                 }

@@ -24,13 +24,9 @@ CUSTOM_DOC("eat whitespace forward from cursor") {
 }
 
 
-//stolen from BYP, pretty cool!
 CUSTOM_COMMAND_SIG(show_file_in_explorer)
 CUSTOM_DOC("Opens file explorer in hot directory") {
     Scratch_Block scratch(app);
-    #if 0 //BYP version
-	String_Const_u8 hot = push_hot_directory(app, scratch);
-    #else //mine uses file hot directory
     View_ID view = get_active_view(app, Access_Always);
     Buffer_ID buffer_id = view_get_buffer(app, view, Access_Always);
     String_Const_u8 hot = get_directory_for_buffer(app, scratch, buffer_id);
@@ -38,9 +34,12 @@ CUSTOM_DOC("Opens file explorer in hot directory") {
         hot = push_hot_directory(app, scratch); //use current hot directory if looking at *scratch* for example
     }
     
-    #endif
-    exec_system_command(app, 0, buffer_identifier(0), hot, string_u8_litexpr("explorer ."), 0); /////////////////////////////////////////////////////////////////////////////////////////
-    
+    String_Const_u8 cmd = string_u8_litexpr("start .");
+    String_Const_u8 filepath = push_buffer_file_name(app, scratch, buffer_id);
+    if (filepath.size > 0) { // means there's a file attached to the buffer, otherwise buffer just exists inside 4coder
+        cmd = push_stringf(scratch, "explorer.exe /select,\"%.*s\"", string_expand(filepath));    
+    } 
+    exec_system_command(app, 0, buffer_identifier(0), hot, cmd, 0);
 }
 
 CUSTOM_COMMAND_SIG(open_file_in_visual_studio)
@@ -64,6 +63,40 @@ CUSTOM_DOC("Open current file in visual studio") {
         if (linenum_string.size > 0) {
             clipboard_post(0, linenum_string);
         }
+    }
+}
+
+CUSTOM_COMMAND_SIG(write_filepath)
+CUSTOM_DOC("Write file full path") {
+    Scratch_Block scratch(app);
+    View_ID view = get_active_view(app, Access_Always);
+    Buffer_ID buffer_id = view_get_buffer(app, view, Access_Always);
+    String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer_id);
+    if (file_name.size > 0) {
+        // luis_set_mark(app);
+        view_set_mark(app, view, seek_pos(view_get_cursor_pos(app, view)));
+        write_text(app, file_name);
+    } 
+}
+
+CUSTOM_COMMAND_SIG(write_filename)
+CUSTOM_DOC("Write file name") {
+    Scratch_Block scratch(app);
+    View_ID view = get_active_view(app, Access_Always);
+    Buffer_ID buffer_id = view_get_buffer(app, view, Access_Always);
+    String_Const_u8 file_name = push_buffer_file_name(app, scratch, buffer_id);
+    if (file_name.size > 0) {
+        file_name = string_front_of_path(file_name);
+    }
+    
+    if (file_name.size == 0) {
+        file_name = push_buffer_base_name(app, scratch, buffer_id);
+    }
+    
+    if (file_name.size > 0) {
+        // luis_set_mark(app);
+        view_set_mark(app, view, seek_pos(view_get_cursor_pos(app, view)));
+        write_text(app, file_name);
     }
 }
 
@@ -1386,6 +1419,7 @@ CUSTOM_DOC("Show code indexes for buffer") {
             Code_Index_Note *note = file->note_array.ptrs[note_index];
             if (note->note_kind == CodeIndexNote_Function_Definition ||
                 note->note_kind == CodeIndexNote_Type_Definition     ||
+                note->note_kind == CodeIndexNote_Type     ||
                 note->note_kind == CodeIndexNote_Macro)
             {
                 Scratch_Block temp(app, scratch);
@@ -1629,6 +1663,7 @@ CUSTOM_DOC("Show code indexes for all buffer") {
             
             if (note->note_kind == CodeIndexNote_Function_Definition ||
                 note->note_kind == CodeIndexNote_Type_Definition     ||
+                note->note_kind == CodeIndexNote_Type     ||
                 note->note_kind == CodeIndexNote_Macro)
             {
                 Scratch_Block temp(app, scratch);
@@ -1879,6 +1914,7 @@ CUSTOM_DOC("Show code indexes for all buffer with no duplicates") {
             
             if (note->note_kind == CodeIndexNote_Function_Definition ||
                 note->note_kind == CodeIndexNote_Type_Definition     ||
+                note->note_kind == CodeIndexNote_Type     ||
                 note->note_kind == CodeIndexNote_Macro)
             {
                 Scratch_Block temp(app, scratch);
@@ -2155,7 +2191,7 @@ luis_lister_navigate_and_peek_buffer_entry(Application_Links *app, View_ID view,
     if (lister->raw_item_index >= 0 &&
         lister->raw_item_index <  lister->options.count) {
         Buffer_ID buffer = (Buffer_ID)PtrAsInt(lister_get_user_data(lister, lister->raw_item_index));
-        Set_Buffer_Flag flags = SetBuffer_KeepOriginalGUI;
+        Set_Buffer_Flag flags = SetBuffer_KeepOriginalGUI|SetBuffer_DontTouchOldFile;
         view_set_buffer(app, view, buffer, flags);
         
         //better to just keep the cursor where we had left it off previously for familiarity
@@ -2393,6 +2429,7 @@ run_lister(Application_Links *app, Lister *lister, bool is_switch_buffer_lister)
     lister_update_filtered_list(app, lister);
     
     View_ID view = get_this_ctx_view(app, Access_Always);
+    Buffer_ID init_buffer_id = view_get_buffer(app, view, Access_Always); 
     View_Context ctx = view_current_context(app, view);
     ctx.render_caller = lister_render;
     ctx.hides_buffer = false;
@@ -2426,6 +2463,13 @@ run_lister(Application_Links *app, Lister *lister, bool is_switch_buffer_lister)
                 }
                 lister_activate(app, lister, user_data, false);
                 result = ListerActivation_Finished;
+                
+                Buffer_ID new_buffer_id = view_get_buffer(app, view, Access_Always);
+                if (new_buffer_id != init_buffer_id) {
+                    // NOTE we have to do this in order to actually touch the file, since 4coder won't call view_set_file() if they're the same (there's no touch_file/view)
+                    view_set_buffer(app, view, init_buffer_id, SetBuffer_KeepOriginalGUI|SetBuffer_DontTouchOldFile);
+                    view_set_buffer(app, view, new_buffer_id,  SetBuffer_KeepOriginalGUI);
+                } 
             }
         }
 
@@ -2898,6 +2942,7 @@ get_code_peek_state(Application_Links *app, View_ID view, i64 pos, View_ID *peek
             
             //ignore type and function decls
             if (note->note_kind == CodeIndexNote_Type_Definition     ||
+                note->note_kind == CodeIndexNote_Type                ||
                 note->note_kind == CodeIndexNote_Function_Definition ||
                 note->note_kind == CodeIndexNote_Macro               ||
                 note->note_kind == CodeIndexNote_Namespace) 
@@ -3141,6 +3186,7 @@ luis_goto_code_index_note(Application_Links *app, View_ID peek, Code_Index_Peek_
         if (notes_found_count == countof(notes_found)) break;
             //ignore type and function decls
         if (note->note_kind == CodeIndexNote_Type_Definition     ||
+            note->note_kind == CodeIndexNote_Type                ||
             note->note_kind == CodeIndexNote_Function_Definition ||
             note->note_kind == CodeIndexNote_Macro               ||
             note->note_kind == CodeIndexNote_Namespace) {    

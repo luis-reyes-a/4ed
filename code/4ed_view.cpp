@@ -459,7 +459,7 @@ view_set_cursor_and_scroll(Thread_Context *tctx, Models *models, View *view, i64
 ////////////////////////////////
 
 internal void
-view_set_file(Thread_Context *tctx, Models *models, View *view, Editing_File *file){
+view_set_file(Thread_Context* tctx, Models* models, View* view, Editing_File* file, Set_Buffer_Flag flags = {}) {
     Assert(file != 0);
     
     Editing_File *old_file = view->file;
@@ -472,10 +472,17 @@ view_set_file(Thread_Context *tctx, Models *models, View *view, Editing_File *fi
                                    (old_file != 0)?old_file->id:0, file->id);
     }
     
+    #if 1
+    if (!(flags & SetBuffer_DontTouchOldFile) && old_file) {
+        file_touch(&models->working_set, old_file); //NOTE (luis) removed this
+        file_edit_positions_push(old_file, view_get_edit_pos(view));
+    }
+    #else
     if (old_file != 0){
         file_touch(&models->working_set, old_file); //NOTE (luis) removed this
         file_edit_positions_push(old_file, view_get_edit_pos(view));
     }
+    #endif
     
     //NOTE (luis) added this because it's weird that when you call buffer_get_next() the most recently used file isn't the one you're currently one....
     //if (file) {

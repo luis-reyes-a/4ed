@@ -709,12 +709,12 @@ App_Step_Sig(app_step) {
                 dependent_text->text.blocked = true;
             }
         }
-    }
+    }   
     
     linalloc_clear(&models->virtual_event_arena);
     models->free_virtual_event = 0;
     models->first_virtual_event = 0;
-    models->last_virtual_event = 0;
+    models->last_virtual_event = 0; 
     
     // NOTE(allen): send panel size update
     if (models->layout.panel_state_dirty){

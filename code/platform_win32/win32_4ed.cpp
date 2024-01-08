@@ -2077,13 +2077,14 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                     if (msg.message == WM_QUIT){
                         keep_running = false;
                     } else if (msg.message == WM_DROPFILES) {
-                        HDROP handle = (HDROP)msg.wParam;
+                        HDROP hdrop = (HDROP)msg.wParam;
                         
-                        UINT file_count = DragQueryFileA(handle, 0xffffffff, NULL, 0);
+                        UINT file_count = DragQueryFileA(hdrop, 0xffffffff, NULL, 0);
                         if (file_count > 0) {
-                            dropped_file_name_length = DragQueryFileA(handle, 0, (char *)dropped_file_name, sizeof(dropped_file_name));
-                        } 
-                        
+                            dropped_file_name_length = DragQueryFileA(hdrop, 0, (char *)dropped_file_name, sizeof(dropped_file_name));
+                        }
+
+                        DragFinish(hdrop);
                     } else{
                         b32 treat_normally = true;
                         if (msg.message == WM_KEYDOWN || msg.message == WM_SYSKEYDOWN){
