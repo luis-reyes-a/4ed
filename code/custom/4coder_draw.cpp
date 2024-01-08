@@ -313,9 +313,15 @@ function void
 draw_file_bar(Application_Links *app, View_ID view_id, Buffer_ID buffer, Face_ID face_id, Rect_f32 bar){
     Scratch_Block scratch(app);
     
+    Dirty_State dirty = buffer_get_dirty_state(app, buffer);
+    
     #if 1 //NOTE(luis) changed this
-    FColor filebar_color = (view_id == get_active_view(app, Access_Always)) ? fcolor_id(defcolor_bar_active) : fcolor_id(defcolor_bar); 
-    draw_rectangle_fcolor(app, bar, 0.f, filebar_color);
+    ARGB_Color filebar_color = 0xffff0000;
+    if (!HasFlag(dirty, DirtyState_UnloadedChanges)) {
+        FColor filebar_color_f = (view_id == get_active_view(app, Access_Always)) ? fcolor_id(defcolor_bar_active) : fcolor_id(defcolor_bar);
+        filebar_color = fcolor_resolve(filebar_color_f);
+    } 
+    draw_rectangle(app, bar, 0.f, filebar_color);
     #else
     draw_rectangle_fcolor(app, bar, 0.f, fcolor_id(defcolor_bar));
     #endif
@@ -358,7 +364,6 @@ draw_file_bar(Application_Links *app, View_ID view_id, Buffer_ID buffer, Face_ID
     
     u8 space[3];
     {
-        Dirty_State dirty = buffer_get_dirty_state(app, buffer);
         String_u8 str = Su8(space, 0, 3);
         if (dirty != 0){
             string_append(&str, string_u8_litexpr(" "));

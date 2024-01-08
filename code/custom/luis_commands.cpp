@@ -140,7 +140,11 @@ CUSTOM_DOC("Toggles modal mode") {
 
 
 
-
+CUSTOM_COMMAND_SIG(revert_buffer)  
+CUSTOM_DOC("Revert buffer to contents on disk") {
+    // TODO add user for confirmation
+    reopen(app);
+}
 
 CUSTOM_COMMAND_SIG(luis_interactive_open_or_new)  
 CUSTOM_DOC("open in new in same tab") {	

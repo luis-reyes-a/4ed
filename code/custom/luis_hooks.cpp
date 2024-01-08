@@ -295,6 +295,8 @@ CUSTOM_DOC("Input consumption loop for default view behavior") {
                 }
             }
             
+            #if 0 // TODO this was a cool idea but it's buggy and I think it's because I shouldn't be calling it here...
+            // not sure exactly why to be honest
             Buffer_ID buffer = view_get_buffer(app, ctx_view, Access_Always);
             Dirty_State dirty = buffer_get_dirty_state(app, buffer);
             if (HasFlag(dirty, DirtyState_UnloadedChanges)) {
@@ -342,6 +344,7 @@ CUSTOM_DOC("Input consumption loop for default view behavior") {
                     view_set_mark(app, ctx_view, seek_pos(pos));
                 }
             }
+            #endif
         }
     }
 }
