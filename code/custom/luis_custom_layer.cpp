@@ -2,6 +2,39 @@
 4coder_default_bidings.cpp - Supplies the default bindings used for default 4coder behavior.
 */
 
+// stuff I've done
+// Navigate back and forwards to previous file locations
+// ctrl-tab to cycle between most recently used tabs (like alt-tabbing)
+// peek code index definitions. Alt down+up peeks at a definition and repeated presses goes to overloaded definitions
+// switch buffer lister and code index lister doesn't take up the whole screen and shows preview of the item before jumping to it
+// file drag and drop
+// added more types to code index (function decls, typedefs, namespaces)
+// can now parse code indexes inside functions/structs. Before only top level structs were considered
+// case statements in switches are no longer indented. Comments are also never indented (this is good if you want to manually control the indentation without fighting 4coder)
+// draw bright red filebar when file has been modified externally (I always never see the asterisk 4coder draws)
+// made cursor and mark behave more like emacs. Notepad mode isn't great because the way it works is by forcing the mark to be where cursor is
+//     that's not like emacs because in emacs the mark is always there, just invisible. You can't for example reselect text you just pasted becaues the mark is at cursor
+//     so now the mark is invisible and there's g_mark_is_active bool that determines to draw the selection and whether or not to do certain operations
+// peek code indices. It's like incremental search but just lets you inspect surrounding scopes to orient yourself in the code
+//     Ryan and Casey draw the text near the opening scope. This is fine for single line scopes but if you have long for statments or function signatures, it can be not helpful
+//     Ryan's also only draws at the bottom of the scope, so it only partially helps if you're near there already
+//     Casey draws his sideways on the left side, which is cool but hard to read for me at least
+// highlight printf specifiers
+
+// TODO
+// basic support for more programming languages. Even just syntax highlighting would be great. I hate having to go back to emacs for certain stuff
+// 4coder still has the windows copy and paste bug: Copying from another program will fail to save to 4coder's internal clipboard, so pasting fails
+// character soft wrap. I don't like 4coder's word wrap because sometimes i'll have long names that will just left half the screen empty and take up the rest of the line. I was used to emacs' basic soft wrap
+// better support for working on several projects at the same time. Being able to filter code inices based on which project for example
+// interactive grep like baregrep that's fast
+
+// stuff no longer supported
+// tabs per view. I didn't use this feature too much and caused to much headache to maintain. You could even rearrange their order with the mouse.
+// jump to type definition of variable. 
+// modal editing. It's not hard to get working again, it's very simple to implement in 4coder. I just don't find it helpful anymore
+// I also used to have code indexing working before it was added by Allen
+
+
 // TOP
 
 #if !defined(FCODER_DEFAULT_BINDINGS_CPP)

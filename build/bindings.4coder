@@ -97,8 +97,8 @@ keys_file = {
     { "navigate_back",    "Left",  "Alt" },
     { "navigate_forward", "Right", "Alt" },
 	
-	{ "luis_select_surrounding_scope",     "BackwardSlash", "Control"},
-	{ "luis_select_scope_contents",        "BackwardSlash", "Alt"},
+	{ "luis_select_surrounding_scope",  "BackwardSlash", "Control"},
+	{ "luis_peek_scopes",               "BackwardSlash", "Alt"},
 	
 	//notepad mode stuff
     { "move_left",    "Left",  "Shift" },

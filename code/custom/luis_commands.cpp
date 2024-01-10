@@ -3343,6 +3343,113 @@ CUSTOM_DOC("search backwards")
 }
 
 
+CUSTOM_COMMAND_SIG(luis_peek_scopes)
+CUSTOM_DOC("peek at top of scopes to get a sense of where you are") {
+    View_ID view = get_active_view(app, Access_ReadVisible);
+    Buffer_ID buffer = view_get_buffer(app, view, Access_ReadVisible);
+    i64 buffer_size = buffer_get_size(app, buffer);
+    if(buffer_size == 0)	return;
+    
+    i64 start_pos = view_get_cursor_pos(app, view);
+    Buffer_Scroll start_scroll = view_get_buffer_scroll(app, view);
+    
+    auto move_cursor_to_view_pos = [app, view](i64 new_pos) {
+        auto seek = seek_pos(new_pos);
+        view_set_cursor(app, view, seek);
+        Buffer_Cursor cursor = view_compute_cursor(app, view, seek);
+        Vec2_f32 p = view_relative_xy_of_pos(app, view, cursor.line, cursor.pos);
+        view_set_preferred_x(app, view, p.x);
+        
+        Rect_f32 region = view_get_buffer_region(app, view);
+        f32 view_height = rect_height(region);
+        Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
+        scroll.target.line_number = cursor.line;
+        scroll.target.pixel_shift.y = -view_height*.25f;
+        view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
+    }; 
+    
+    // current scope is at where first_pos is
+    // everytime we peek a scope above we increase that
+    i32 current_scope = 0;
+    i64 pos = start_pos;
+    bool return_to_start_pos = true;
+    for (;;) {
+        User_Input in = get_next_input(app, EventPropertyGroup_Any, EventProperty_Escape);
+        if (in.abort)	break;
+        
+        i32 peek_dir = 0;
+        if (in.event.kind == InputEventKind_KeyStroke) {
+            Key_Code code = in.event.key.code;
+            if (code == KeyCode_BackwardSlash) {
+                // Input_Modifier_Set *mods = get_modifiers(&in.event);
+                // peek_dir = mods->count? -1 : 1;
+                peek_dir = (has_modifier(&in.event, KeyCode_Shift) ? -1 : 1);
+            } else if (code == KeyCode_Up) {
+                peek_dir = 1;
+            } else if (code == KeyCode_Down) {
+                peek_dir = -1;
+            } else if (code == KeyCode_Return) {
+                return_to_start_pos = false;
+                break;
+            } else if (code == KeyCode_Home) {
+                Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
+                scroll.target = view_move_buffer_point(app, view, scroll.target, V2f32(0.f, -16.0f));
+                view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
+            } else if (code == KeyCode_End) {
+                Buffer_Scroll scroll = view_get_buffer_scroll(app, view);
+                scroll.target = view_move_buffer_point(app, view, scroll.target, V2f32(0.f, 16.0f));
+                view_set_buffer_scroll(app, view, scroll, SetBufferScroll_SnapCursorIntoView);
+            }
+        } else if (in.event.kind == InputEventKind_MouseWheel) {
+            mouse_wheel_scroll(app);
+        } 
+        
+        if (peek_dir > 0) {
+            Range_i64 range = {};
+            if (find_surrounding_nest(app, buffer, pos, FindNest_Scope, &range)) {
+                move_cursor_to_view_pos(range.first);
+                // view_set_cursor_and_preferred_x(app, view, seek_pos(range.first));
+                // view_look_at_region(app, view, range.first, range.end);
+                pos = range.first;
+                current_scope += 1;
+            }
+        } else {
+            i32 new_scope = current_scope + peek_dir;
+            new_scope = Max(new_scope, 0);
+            
+            current_scope = 0;
+            pos = start_pos;
+            
+            if (new_scope == 0) {
+                view_set_cursor_and_preferred_x(app, view, seek_pos(start_pos));
+                view_set_buffer_scroll(app, view, start_scroll, SetBufferScroll_SnapCursorIntoView);    
+            } else {
+                for (i32 i = 0; i < new_scope; i += 1) {
+                    Range_i64 range = {};
+                    if (find_surrounding_nest(app, buffer, pos, FindNest_Scope, &range)) {
+                        // setting cursor for each jump makes movment very clunky
+                        // view_set_cursor_and_preferred_x(app, view, seek_pos(range.first));
+                        // view_look_at_region(app, view, range.first, range.end);
+                        pos = range.first;
+                        current_scope += 1;
+                    } else {
+                        break;
+                    }
+                }    
+                
+                // setting this
+                // view_set_cursor_and_preferred_x(app, view, seek_pos(pos));
+                move_cursor_to_view_pos(pos);
+            } 
+            
+        }
+    } 
+    
+    if (return_to_start_pos) {
+        view_set_cursor_and_preferred_x(app, view, seek_pos(start_pos));
+        view_set_buffer_scroll(app, view, start_scroll, SetBufferScroll_SnapCursorIntoView);    
+    } 
+}
 
 
 // deprecated stuff
