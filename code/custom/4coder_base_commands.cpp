@@ -102,7 +102,7 @@ write_text(Application_Links *app, String_Const_u8 insert){
     }
 }
 
-#if 0 // original version
+#if 1 // original version
 CUSTOM_COMMAND_SIG(write_text_input)
 CUSTOM_DOC("Inserts whatever text was used to trigger this command.")
 {
@@ -110,7 +110,7 @@ CUSTOM_DOC("Inserts whatever text was used to trigger this command.")
     String_Const_u8 insert = to_writable(&in);
     write_text(app, insert);
 }
-#else
+#else // this is normal notepad version that I started to hate
 bool *luis_get_mark_is_active();
   
 CUSTOM_COMMAND_SIG(write_text_input)

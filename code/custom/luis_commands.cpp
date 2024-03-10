@@ -41,7 +41,6 @@ CUSTOM_DOC("Opens file explorer in hot directory") {
     } 
     exec_system_command(app, 0, buffer_identifier(0), hot, cmd, 0);
 }
-
 CUSTOM_COMMAND_SIG(open_file_in_visual_studio)
 CUSTOM_DOC("Open current file in visual studio") {
     Scratch_Block scratch(app);
@@ -145,6 +144,8 @@ CUSTOM_DOC("Revert buffer to contents on disk") {
     // TODO add user for confirmation
     reopen(app);
 }
+
+
 
 CUSTOM_COMMAND_SIG(luis_interactive_open_or_new)  
 CUSTOM_DOC("open in new in same tab") {	
@@ -2472,6 +2473,33 @@ lister_render(Application_Links *app, Frame_Info frame_info, View_ID view){
 }
 
 
+/* NOTE we have a bug that happens very rarely when pressing enter to open a file from interactive_open_or_new
+** the main issue I think we get is that run_lister calls fallback_command_dispatch, which calls our same binding.custom() again
+** but why is that happening?
+*/
+
+/* call stack we get is
+**  0. [0x7fface3a97da] 4ed_app   coroutine_run @Assert(other->state == CoroutineState_Dead || other->state == CoroutineState_Inactive);
+**  1. [0x7fface3c015a] 4ed_app   co_run
+**  2. [0x7fface3c0613] 4ed_app   co_singal_abort
+**  3. [0x7fface3c0c0a] 4ed_app   view_quit_ui
+**  4. [0x7fface377362] 4ed_app   view_set_buffer
+**  5. [0x7ffaa1df951f] custom_4coder  interactive_open_or_new
+**  6. [0x7ffaa1dfe059] custom_4coder  luis_interactive_open_or_new
+**  7. [0x7ffaa1e6c9c9] custom_4coder  fallback_command_dispatch
+**  8. [0x7ffaa1e158c2] custom_4coder  run_lister (luis_commands.cpp version)
+**  9. [0x7ffaa1e15b0f] custom_4coder  run_lister_with_refresh_handler
+** 10. [0x7ffaa1e7e377] custom_4coder  get_file_name_from_user
+** 11. [0x7ffaa1e7e7a5] custom_4coder  get_file_name_from_user
+** 12. [0x7ffaa1df9187] custom_4coder  interactive_open_or_new
+** 13. [0x7ffaa1dfe059] custom_4coder  luis_interactive_open_or_new
+** 14. [0x7ffaa1e04c44] custom_4coder  luis_view_input_handler
+** 15. [0x7fface3c022e] 4ed_app
+** 16. [0x7fface3a91c8] 4ed_app
+** 17. [0x7ff668e74219] 4ed
+** 18. [0x7ffb13937344] KERNEL32
+** 19. [0x7ffb14bc26b1] ntdll
+*/
 
 function Lister_Result
 run_lister(Application_Links *app, Lister *lister, bool is_switch_buffer_lister) {
@@ -2546,7 +2574,7 @@ run_lister(Application_Links *app, Lister *lister, bool is_switch_buffer_lister)
                     }
                     lister_activate(app, lister, user_data, false);
                     result = ListerActivation_Finished;
-                }break;
+                } break;
 
                 case KeyCode_Tab: {
                     i32 delta = (has_modifier(&in.event, KeyCode_Shift) ? -1 : 1);
@@ -2713,7 +2741,13 @@ run_lister(Application_Links *app, Lister *lister, bool is_switch_buffer_lister)
             break;
         }
         
-        if (!handled){
+        if (!handled) {
+            // NOTE(luis) turning off fallback_command_dispatch() makes basic text insert
+            // not work, so it is used. I modified fallback_command_dispatch to never call
+            // luis_interactive_open_or_new() or interactive_open_or_new() again... which is 
+            // just a duct tape solution for now, but whatever, 4coder is basically where I want
+            // it as a text editor (or I will be switching to 10x or something simpler (maybe focus?)
+            #if 1 
             Mapping *mapping = lister->mapping;
             Command_Map *map = lister->map;
             
@@ -2729,6 +2763,9 @@ run_lister(Application_Links *app, Lister *lister, bool is_switch_buffer_lister)
             else{
                 lister_call_refresh_handler(app, lister);
             }
+            #else
+            lister_call_refresh_handler(app, lister);
+            #endif
         }
     }
 
@@ -2922,7 +2959,6 @@ luis_goto_code_index_note(Application_Links *app, View_ID peek, Code_Index_Peek_
         if (notes_found_count == countof(notes_found)) break;
             //ignore type and function decls
         if (note->note_kind == CodeIndexNote_Type_Definition     ||
-            note->note_kind == CodeIndexNote_Type                ||
             note->note_kind == CodeIndexNote_Function_Definition ||
             note->note_kind == CodeIndexNote_Macro               ||
             note->note_kind == CodeIndexNote_Namespace) {    

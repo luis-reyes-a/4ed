@@ -309,6 +309,8 @@ draw_background_and_margin(Application_Links *app, View_ID view){
     return(draw_background_and_margin(app, view, is_active_view));
 }
 
+static Buffer_ID get_comp_buffer(Application_Links *app);
+
 function void
 draw_file_bar(Application_Links *app, View_ID view_id, Buffer_ID buffer, Face_ID face_id, Rect_f32 bar){
     Scratch_Block scratch(app);
@@ -376,6 +378,20 @@ draw_file_bar(Application_Links *app, View_ID view_id, Buffer_ID buffer, Face_ID
         }
         push_fancy_string(scratch, &list, pop2_color, str.string);
     }
+    
+    
+    if (buffer == get_comp_buffer(app)) {
+        i64 max_linenum = buffer_get_line_count(app, buffer);
+        
+        u8 line_buffer[64];
+        Range_i64 range = get_line_pos_range(app, buffer, max_linenum);
+        range.max = Min(range.max, range.min + (i64)ArrayCount(line_buffer));
+        if ((range.max > range.min) && buffer_read_range(app, buffer, range, line_buffer)) {
+            String_Const_u8 linestr = { line_buffer, (u64)range_size(range) };
+            push_fancy_string(scratch, &list, pop2_color, SCu8(" - "));
+            push_fancy_string(scratch, &list, pop2_color, linestr);
+        } 
+    } 
     
     Vec2_f32 p = bar.p0 + V2f32(2.f, 2.f);
     draw_fancy_line(app, face_id, fcolor_zero(), &list, p);

@@ -38,7 +38,7 @@ cursor_roundness = 45;
 mark_thickness = 3;
 
 // Theme
-default_theme_name = "theme-everforest";
+default_theme_name = "theme-moss";
 
 // lister_roundess is a value [0,50] setting the radius of
 // the lister items' roundness as a percentage of their height

@@ -244,14 +244,23 @@ fallback_command_dispatch(Application_Links *app, Mapping *mapping, Command_Map 
                     result.code = FallbackDispatch_DelayedUICall;
                     result.func = binding.custom;
                 }
-                else{
+                else {
+                    // NOTE(luis) added this extra conditional
+                    if (binding.custom != luis_interactive_open_or_new && 
+                        binding.custom != interactive_open_or_new) {
+                        binding.custom(app);
+                        result.code = FallbackDispatch_DidCall;    
+                    }
+                    
+                }
+            }
+            else {
+                // NOTE(luis) added this extra conditional
+                if (binding.custom != luis_interactive_open_or_new && 
+                    binding.custom != interactive_open_or_new) {
                     binding.custom(app);
                     result.code = FallbackDispatch_DidCall;
                 }
-            }
-            else{
-                binding.custom(app);
-                result.code = FallbackDispatch_DidCall;
             }
         }
     }
